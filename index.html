@@ -11,26 +11,28 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
 
 <style>
-/* ── 얇게 · 조밀하게 · 거의 단색으로 ────────────────────────
-   선은 검정 실선이 아니라 검정의 옅은 농도다. 굵기는 전부 1px 이하.
-   자획은 400 을 기본으로 두고 500 까지만 쓴다. 700 은 로고 하나뿐.
-   빨강은 장식이 아니라 신호다 — 경고, 적기, 되돌릴 수 없는 동작에만.
-   곡선 없음(반경 0). 계기 레이더만 예외. */
+/* ── 어두운 바탕 · 살아 있는 배경 ────────────────────────────
+   메뉴 뒤에서 실제 게임 월드가 계속 돌아간다. 패널은 그 위에 얹힌
+   반투명 오버레이다 — 관제 화면에 가깝지, 웹 페이지가 아니다.
+
+   지금까지의 규칙은 그대로 간다: 색은 셋(검정·흰색·빨강), 반경 0,
+   선은 1px 이하, 자획은 400~500. 바탕만 뒤집었다.
+   촌스러움은 네온·베벨·그라디언트 버튼·금속 질감에서 오므로 쓰지 않는다.
+   위계는 오직 크기와 여백으로 만든다. */
 :root{
-  --paper:#FFFFFF;
-  --ink:#0A0A0A;
-  --red:#E11900;
+  --paper:#0A0A0A;
+  --ink:#FFFFFF;
+  --red:#FF2D16;
 
-  --ink2:rgba(10,10,10,.56);
-  --ink3:rgba(10,10,10,.42);
-  --line:rgba(10,10,10,.09);
-  --line2:rgba(10,10,10,.16);
-  --edge:rgba(10,10,10,.26);
-  --fill:rgba(10,10,10,.032);
-  --fill2:rgba(10,10,10,.06);
-  --red-wash:rgba(225,25,0,.06);
+  --ink2:rgba(255,255,255,.60);
+  --ink3:rgba(255,255,255,.38);
+  --line:rgba(255,255,255,.10);
+  --line2:rgba(255,255,255,.17);
+  --edge:rgba(255,255,255,.30);
+  --fill:rgba(255,255,255,.045);
+  --fill2:rgba(255,255,255,.085);
+  --red-wash:rgba(255,45,22,.12);
 
-  /* 스크립트가 참조하는 옛 이름 */
   --sky:var(--ink); --sky-deep:var(--ink); --sky-mist:var(--fill); --sky-edge:var(--edge);
   --good:var(--ink); --caution:var(--red); --bad:var(--red);
   --gl:transparent; --gl-2:transparent; --gl-3:transparent;
@@ -43,22 +45,22 @@
   --f-lb:"IBM Plex Sans","IBM Plex Sans KR",system-ui,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,monospace;
 
-  --s1:3px; --s2:6px; --s3:10px; --s4:13px; --s5:18px; --s6:26px;
-  color-scheme:light;
+  --s1:3px; --s2:6px; --s3:10px; --s4:14px; --s5:20px; --s6:30px;
+  color-scheme:dark;
 }
 *{box-sizing:border-box;border-radius:0}
 body{
   margin:0; background:var(--paper); color:var(--ink);
   font-family:var(--f-kr); font-size:13px; font-weight:400; line-height:1.5;
-  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; overflow:hidden;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
 }
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:none}
 :focus-visible{outline:1px solid var(--ink);outline-offset:1px}
 ::selection{background:var(--ink);color:var(--paper)}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.lbl{font-family:var(--f-lb);font-size:10px;font-weight:500;letter-spacing:.05em;
-     text-transform:uppercase;color:var(--ink2)}
+.lbl{font-family:var(--f-lb);font-size:9.5px;font-weight:500;letter-spacing:.14em;
+     text-transform:uppercase;color:var(--ink3)}
 .hide{display:none!important}
 
 .scroll{overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
@@ -66,49 +68,98 @@ button{cursor:pointer;background:none;border:none}
 .scroll::-webkit-scrollbar-thumb{background:var(--line2)}
 .scroll::-webkit-scrollbar-track{background:transparent}
 
-/* ══ 작전실 ════════════════════════════════════════════════ */
-#ops{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--paper)}
+/* ══ 작전실 — 3D 위에 얹힌 오버레이 ════════════════════════ */
+#ops{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;
+  background:transparent}
 #ops.off{display:none}
 
+/* 상단 — 워드마크에 힘을 준다 */
 .topbar{flex:0 0 auto;display:flex;align-items:center;gap:var(--s5);
-  padding:0 var(--s5);height:44px;border-bottom:1px solid var(--line2)}
-.brand{display:flex;align-items:baseline;gap:8px;margin-right:auto;min-width:0}
-.brand b{font-family:var(--f-ui);font-size:14.5px;font-weight:600;letter-spacing:-.02em}
-.brand span{font-size:10px;font-weight:400;letter-spacing:.04em;color:var(--ink3)}
-.stat{display:flex;align-items:baseline;gap:6px}
-.stat .lbl{font-size:9.5px}
-.stat b{font-family:var(--f-num);font-size:12.5px;font-weight:500}
-.link{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;
+  padding:0 var(--s5);height:58px;border-bottom:1px solid var(--line);
+  background:rgba(10,10,10,.88)}
+.brand{display:flex;align-items:baseline;gap:11px;margin-right:auto;min-width:0}
+.brand b{font-family:var(--f-ui);font-size:20px;font-weight:600;letter-spacing:.01em;
+  text-transform:uppercase}
+.brand span{font-size:9.5px;font-weight:400;letter-spacing:.2em;color:var(--ink3);
+  text-transform:uppercase}
+.stat{display:flex;align-items:baseline;gap:7px}
+.stat .lbl{font-size:9px}
+.stat b{font-family:var(--f-num);font-size:14px;font-weight:500}
+.link{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;
   border:1px solid var(--line2);background:transparent;color:var(--ink2);
-  font-size:11px;font-weight:400}
+  font-size:10.5px;font-weight:400;letter-spacing:.06em;text-transform:uppercase}
 .link.on{border-color:var(--edge);color:var(--ink)}
 .link i{width:5px;height:5px;background:currentColor;font-style:normal;display:block}
 
-/* 세 칸 */
-.grid{flex:1;display:grid;grid-template-columns:262px minmax(0,1fr) 300px;min-height:0}
-.col{display:flex;flex-direction:column;min-height:0;min-width:0;
-  border-right:1px solid var(--line2);background:var(--paper)}
-.col:last-child{border-right:none}
-.colhd{flex:0 0 auto;display:flex;align-items:center;gap:8px;height:34px;
-  padding:0 var(--s4);border-bottom:1px solid var(--line)}
-.colhd h2{margin:0;font-size:11.5px;font-weight:500;letter-spacing:.01em;color:var(--ink)}
-.colhd .rule{flex:1}
-.colbd{padding:var(--s4);display:flex;flex-direction:column;gap:var(--s5);min-height:0}
+/* 무대 — 가운데는 비워 둔다. 거기에 3D 기체가 선다. */
+#stage{flex:1;display:grid;grid-template-columns:250px minmax(0,1fr) 292px;
+  min-height:0;gap:0}
+.rail{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;
+  background:rgba(10,10,10,.86)}
+.rail:first-child{border-right:1px solid var(--line)}
+.rail:last-child{border-left:1px solid var(--line)}
+.pnl{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s4);
+  border-bottom:1px solid var(--line);min-height:0}
+.pnl:last-child{border-bottom:none}
+.pnl.grow{flex:1;min-height:0;overflow-y:auto}
+.pnl.flush{padding:0;gap:0}
+.pnl > h3{margin:0;display:flex;align-items:center;gap:8px;
+  font-size:9.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink3)}
+.pnl > h3 .rule{flex:1}
+.pnl.flush > h3{padding:var(--s4) var(--s4) 0}
+
+/* 가운데 — 위는 비우고 조작부는 아래에 모은다 */
+/* 가운데는 비워 둔다 — 3D 기체가 그대로 보여야 한다.
+   버튼이 놓이는 아래쪽만 어둡게 깔아 글자를 읽게 한다. */
+.center{display:flex;flex-direction:column;justify-content:flex-end;
+  padding:var(--s5);min-height:0;min-width:0;overflow-y:auto;
+  background:linear-gradient(180deg,transparent 34%,rgba(10,10,10,.55) 62%,
+                             rgba(10,10,10,.90) 100%)}
+
+/* 주 동작 — 한 줄로 나란히 */
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:0;
+  border:1px solid var(--edge)}
+.acts > button{padding:16px 12px;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink);background:transparent;transition:background .12s,color .12s}
+.acts > button:last-child{border-right:none}
+.acts > button:hover{background:var(--ink);color:var(--paper)}
+.acts > button span{font-size:9.5px;font-weight:400;letter-spacing:.04em;
+  text-transform:none;color:var(--ink3)}
+.acts > button:hover span{color:rgba(10,10,10,.6)}
+.acts > button:disabled{color:var(--ink3);cursor:not-allowed}
+.acts > button:disabled:hover{background:transparent;color:var(--ink3)}
+
+/* 가운데에 뜨는 보조 줄 */
+.strip{display:flex;align-items:center;gap:10px;padding:8px 12px;
+  border:1px solid var(--line);border-bottom:none;font-size:11px;color:var(--ink2)}
+.strip .rule{flex:1}
+.strip i{width:6px;height:6px;background:currentColor;font-style:normal;display:block;
+  flex:0 0 auto}
+
+/* 기체 이름표 — 3D 기체 바로 아래 */
+.plate{text-align:center;padding:0 0 var(--s5);pointer-events:none}
+.plate b{display:block;font-family:var(--f-ui);font-size:26px;font-weight:500;
+  letter-spacing:-.015em;line-height:1.2}
+.plate span{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink3);margin-top:4px}
 
 /* 파일럿 */
-.dogtag{padding:var(--s4);border:1px solid var(--line2);display:flex;flex-direction:column;
-  gap:var(--s3)}
+.dogtag{padding:var(--s4);border:1px solid var(--line2);background:rgba(255,255,255,.035);
+  display:flex;flex-direction:column;gap:var(--s3)}
 .dogtag .cs{display:flex;align-items:baseline;gap:8px}
-.dogtag .cs b{font-family:var(--f-ui);font-size:19px;font-weight:500;letter-spacing:-.025em;
-  line-height:1.2;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dogtag .cs button{margin-left:auto;padding-left:8px;flex:0 0 auto;font-size:10.5px;
-  font-weight:400;color:var(--ink3)}
+.dogtag .cs b{font-family:var(--f-ui);font-size:23px;font-weight:500;letter-spacing:-.02em;
+  line-height:1.15;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dogtag .cs button{margin-left:auto;padding-left:8px;flex:0 0 auto;font-size:10px;
+  font-weight:400;color:var(--ink3);letter-spacing:.04em}
 .dogtag .cs button:hover{color:var(--ink)}
 .kv{display:grid;grid-template-columns:1fr auto;gap:4px var(--s3);align-items:baseline;margin:0}
-.kv dt{font-size:11.5px;font-weight:400;color:var(--ink2)}
+.kv dt{font-size:11px;font-weight:400;color:var(--ink3)}
 .kv dd{margin:0;font-family:var(--f-num);font-size:11.5px;font-weight:400;text-align:right}
 
-/* 목록 — 선은 안쪽 구분선 하나씩만 */
+/* 목록 */
 .slots,.parts,.roster{display:flex;flex-direction:column;border:1px solid var(--line2)}
 .slot,.part,.pl{display:flex;align-items:center;gap:9px;padding:6px 9px;min-height:34px;
   border-bottom:1px solid var(--line)}
@@ -116,51 +167,51 @@ button{cursor:pointer;background:none;border:none}
 .slot.empty{color:var(--ink3)}
 .slot .t,.part .t{width:2px;align-self:stretch;background:var(--edge)}
 .slot.t2 .t,.part.t2 .t{background:var(--ink2)}
-.slot.t3 .t,.part.t3 .t{background:var(--ink)}
+.slot.t3 .t,.part.t3 .t{background:var(--red)}
 .slot .nm,.part .nm{flex:1;min-width:0}
 .slot .nm b,.part .nm b{display:block;font-size:12px;font-weight:500;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slot .nm i,.part .nm i{font-style:normal;font-size:10.5px;color:var(--ink3)}
+.slot .nm i,.part .nm i{font-style:normal;font-size:10px;color:var(--ink3)}
 .slot .x{color:var(--ink3);font-size:12px;line-height:1;padding:2px 5px}
 .slot .x:hover{color:var(--red)}
 .part:hover{background:var(--fill)}
 .part .qty{font-family:var(--f-num);font-size:11px;color:var(--ink3);min-width:20px;text-align:right}
-.part .act{font-size:10.5px;font-weight:400;padding:3px 8px;border:1px solid var(--line2);
-  color:var(--ink2);white-space:nowrap}
+.part .act{font-size:10px;font-weight:400;padding:3px 8px;border:1px solid var(--line2);
+  color:var(--ink2);white-space:nowrap;letter-spacing:.04em;text-transform:uppercase}
 .part .act:hover{border-color:var(--edge);color:var(--ink);background:var(--fill)}
 .part .act:disabled{opacity:.35;cursor:not-allowed}
 
-/* 버튼 */
+/* 버튼 — 채움은 주동작 하나뿐 */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  padding:7px 13px;border:1px solid var(--edge);background:transparent;color:var(--ink);
-  font-size:11.5px;font-weight:400;letter-spacing:.005em;
+  padding:9px 15px;border:1px solid var(--edge);background:transparent;color:var(--ink);
+  font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
   transition:background .12s,border-color .12s,color .12s}
 .btn:hover{background:var(--fill2);border-color:var(--ink)}
-.btn.pri{background:var(--ink);border-color:var(--ink);color:var(--paper)}
-.btn.pri:hover{background:var(--ink2);border-color:transparent}
+.btn.pri{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:600}
+.btn.pri:hover{background:var(--red);border-color:var(--red);color:var(--ink)}
 .btn.dgr{border-color:var(--line2);color:var(--red)}
 .btn.dgr:hover{background:var(--red-wash);border-color:var(--red)}
-.btn:disabled{cursor:not-allowed;background:transparent;border-color:var(--line2);
-  color:var(--ink3)}
-.btn:disabled:hover{background:transparent;border-color:var(--line2);color:var(--ink3)}
-.btn.sm{padding:4px 9px;font-size:10.5px}
-.btn.wide{width:100%}
+.btn:disabled{cursor:not-allowed;background:transparent;border-color:var(--line);
+  color:var(--ink3);font-weight:400}
+.btn:disabled:hover{background:transparent;border-color:var(--line);color:var(--ink3)}
+.btn.sm{padding:5px 10px;font-size:9.5px;letter-spacing:.08em}
+.btn.wide{width:100%;padding:12px 15px;font-size:12px}
 
 /* 입력 */
 .field{display:flex;flex-direction:column;gap:5px}
-.inp{padding:7px 10px;width:100%;background:transparent;border:1px solid var(--line2);
-  color:var(--ink);font-family:var(--f-kr);font-size:12.5px}
-.inp:focus{outline:none;border-color:var(--ink)}
+.inp{padding:8px 10px;width:100%;background:rgba(255,255,255,.04);
+  border:1px solid var(--line2);color:var(--ink);font-family:var(--f-kr);font-size:12.5px}
+.inp:focus{outline:none;border-color:var(--ink);background:rgba(255,255,255,.07)}
 .inp::placeholder{color:var(--ink3)}
-.inp.code{font-family:var(--f-num);font-size:26px;font-weight:400;letter-spacing:.3em;
-  text-align:center;padding:11px 10px 11px 20px}
+.inp.code{font-family:var(--f-num);font-size:30px;font-weight:400;letter-spacing:.34em;
+  text-align:center;padding:12px 10px 12px 22px}
 
-/* 편대 */
+/* 편대 — 스쿼크는 이 화면의 주인공이다 */
 .brief{padding:var(--s4);border:1px solid var(--line2);display:flex;flex-direction:column;
   gap:var(--s3)}
-.sqk{display:flex;align-items:center;gap:var(--s5);padding:var(--s5) var(--s5);
-  border:1px solid var(--edge)}
-.sqk .big{font-family:var(--f-num);font-size:38px;font-weight:400;letter-spacing:.1em;
+.sqk{display:flex;align-items:center;gap:var(--s5);padding:var(--s5);
+  border:1px solid var(--edge);background:rgba(255,255,255,.04)}
+.sqk .big{font-family:var(--f-num);font-size:52px;font-weight:400;letter-spacing:.1em;
   line-height:1}
 .sqk .meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .sqk .meta p{margin:0;font-size:11.5px;color:var(--ink2);line-height:1.5}
@@ -169,57 +220,62 @@ button{cursor:pointer;background:none;border:none}
 .pl .who{flex:1;min-width:0}
 .pl .who b{font-family:var(--f-ui);font-size:12.5px;font-weight:500;display:block;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pl .who i{font-style:normal;font-size:10.5px;color:var(--ink3)}
+.pl .who i{font-style:normal;font-size:10px;color:var(--ink3);letter-spacing:.05em;
+  text-transform:uppercase}
 .pl .kd{font-family:var(--f-num);font-size:11px;color:var(--ink3);white-space:nowrap}
 .pl .kd b{color:var(--ink);font-weight:500}
-.pl .tag{font-size:9.5px;font-weight:400;padding:2px 6px;border:1px solid var(--line2);
-  color:var(--ink3)}
+.pl .tag{font-size:9px;font-weight:400;padding:2px 6px;border:1px solid var(--line2);
+  color:var(--ink3);letter-spacing:.08em;text-transform:uppercase}
 .pl .tag.host{color:var(--ink2);border-color:var(--edge)}
-.pl .tag.you{color:var(--ink);border-color:var(--edge)}
+.pl .tag.you{color:var(--red);border-color:var(--red)}
 
 .empty{padding:var(--s5) var(--s4);text-align:center;border:1px dashed var(--line2);
   color:var(--ink3);font-size:11.5px}
-.empty b{display:block;font-size:11.5px;font-weight:500;margin-bottom:4px;color:var(--ink2)}
-.note{font-size:11.5px;color:rgba(10,10,10,.64);line-height:1.65}
+.empty b{display:block;font-size:10px;font-weight:500;margin-bottom:4px;color:var(--ink2);
+  letter-spacing:.12em;text-transform:uppercase}
+.note{font-size:11.5px;color:var(--ink2);line-height:1.65}
 .note b{color:var(--ink);font-weight:500}
 .note code{font-family:var(--f-num);font-size:11px;color:var(--ink)}
-.warn{padding:8px 10px;font-size:11.5px;line-height:1.55;color:var(--ink2);
-  border:1px solid var(--line2);border-left:2px solid var(--red)}
-.req{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--edge)}
+.warn{padding:8px 11px;font-size:11.5px;line-height:1.55;color:var(--ink2);
+  border:1px solid var(--line);border-left:2px solid var(--red);background:var(--red-wash)}
+.req{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--red);
+  background:var(--red-wash)}
 .req .who{flex:1;font-size:12.5px;font-weight:500}
 
 /* 교신 */
 .log{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;
   padding:var(--s3) var(--s4);overflow-y:auto}
 .msg{display:flex;gap:8px;font-size:12px;line-height:1.5;word-break:break-word}
-.msg .from{font-size:11px;font-weight:500;color:var(--ink);flex:0 0 auto;max-width:88px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-top:1px}
+.msg .from{font-size:10.5px;font-weight:500;color:var(--ink);flex:0 0 auto;max-width:88px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-top:1px;
+  letter-spacing:.05em;text-transform:uppercase}
 .msg .txt{flex:1;min-width:0;color:var(--ink2)}
 .msg.sys .from{color:var(--ink3);font-weight:400}
 .msg.sys .txt{color:var(--ink3)}
 .composer{flex:0 0 auto;display:flex;border-top:1px solid var(--line)}
-.composer input{flex:1;min-width:0;padding:8px var(--s4);border:none;background:transparent;
+.composer input{flex:1;min-width:0;padding:9px var(--s4);border:none;background:transparent;
   color:var(--ink);font-size:12.5px}
 .composer input:focus{outline:none;background:var(--fill)}
-.composer button{padding:0 13px;border-left:1px solid var(--line);background:transparent;
-  color:var(--ink2);font-size:11.5px;font-weight:400}
+.composer button{padding:0 14px;border-left:1px solid var(--line);background:transparent;
+  color:var(--ink2);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase}
 .composer button:hover{color:var(--ink);background:var(--fill)}
 .brevity{display:flex;flex-wrap:wrap;gap:0;padding:0 var(--s4) var(--s3);
   border-top:1px solid var(--line)}
-.brevity button{font-size:10.5px;font-weight:400;padding:4px 8px;color:var(--ink3);
+.brevity button{font-size:10px;font-weight:400;padding:4px 8px;color:var(--ink3);
   border:1px solid var(--line);margin:-1px 0 0 -1px}
 .brevity button:hover{color:var(--ink);border-color:var(--edge);position:relative;z-index:1}
 
 /* ══ 모달 ══════════════════════════════════════════════════ */
 .veil{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
-  padding:var(--s4);background:rgba(10,10,10,.4)}
-.sheet{width:min(560px,100%);max-height:88vh;display:flex;flex-direction:column;
-  background:var(--paper);border:1px solid var(--edge);overflow:hidden}
-.sheet header{display:flex;align-items:center;gap:8px;padding:0 var(--s5);height:42px;
+  padding:var(--s4);background:rgba(4,4,4,.72)}
+.sheet{width:min(580px,100%);max-height:88vh;display:flex;flex-direction:column;
+  background:#0C0C0C;border:1px solid var(--edge);overflow:hidden}
+.sheet header{display:flex;align-items:center;gap:8px;padding:0 var(--s5);height:46px;
   border-bottom:1px solid var(--line)}
-.sheet header h3{margin:0;font-size:12.5px;font-weight:500;letter-spacing:-.005em}
+.sheet header h3{margin:0;font-size:10.5px;font-weight:500;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink2)}
 .sheet header .x{margin-left:auto;color:var(--ink3);font-size:13px;line-height:1;padding:3px 6px}
-.sheet header .x:hover{color:var(--ink)}
+.sheet header .x:hover{color:var(--red)}
 .sheet .body{padding:var(--s5);display:flex;flex-direction:column;gap:var(--s4);
   overflow-y:auto;min-height:0}
 .sheet footer{display:flex;gap:var(--s2);padding:var(--s3) var(--s5);
@@ -229,10 +285,11 @@ button{cursor:pointer;background:none;border:none}
 .trade{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line2)}
 .trade > div{padding:var(--s4);display:flex;flex-direction:column;gap:var(--s2);min-height:150px}
 .trade > div:first-child{border-right:1px solid var(--line)}
-.trade h4{margin:0 0 2px;font-size:11px;font-weight:500;color:var(--ink3)}
+.trade h4{margin:0 0 2px;font-size:9.5px;font-weight:500;color:var(--ink3);
+  letter-spacing:.12em;text-transform:uppercase}
 .trade h4.mine{color:var(--ink)}
 .pick{display:flex;flex-wrap:wrap;gap:0}
-.pick button{font-size:10.5px;font-weight:400;padding:4px 8px;color:var(--ink3);
+.pick button{font-size:10.5px;font-weight:400;padding:4px 9px;color:var(--ink3);
   border:1px solid var(--line);margin:-1px 0 0 -1px}
 .pick button:hover{color:var(--ink);border-color:var(--edge);position:relative;z-index:1}
 .pick button.on{background:var(--ink);border-color:var(--ink);color:var(--paper);
@@ -240,29 +297,30 @@ button{cursor:pointer;background:none;border:none}
 
 /* 조종 방식 */
 .seg{display:flex;border:1px solid var(--line2)}
-.seg button{flex:1;padding:6px 8px;font-size:11.5px;font-weight:400;color:var(--ink3);
-  border-right:1px solid var(--line)}
+.seg button{flex:1;padding:7px 8px;font-size:10.5px;font-weight:500;color:var(--ink3);
+  border-right:1px solid var(--line);letter-spacing:.08em;text-transform:uppercase}
 .seg button:last-child{border-right:none}
 .seg button:hover{color:var(--ink);background:var(--fill)}
 .seg button.on{background:var(--ink);color:var(--paper)}
 .rng{display:flex;align-items:center;gap:8px}
-.rng input[type=range]{flex:1;accent-color:var(--ink);height:2px}
+.rng input[type=range]{flex:1;accent-color:var(--red);height:2px}
 .rng .v{font-family:var(--f-num);font-size:11px;color:var(--ink3);width:32px;text-align:right}
 .chk{display:flex;gap:7px;align-items:center;font-size:11.5px;color:var(--ink2);cursor:pointer}
-.chk input{accent-color:var(--ink)}
+.chk input{accent-color:var(--red)}
 
 /* ══ 격납고 ════════════════════════════════════════════════ */
-.bay{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));
+.bay{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));
   border-top:1px solid var(--line2);border-left:1px solid var(--line2)}
 .bayc{position:relative;padding:8px;text-align:left;display:flex;flex-direction:column;gap:5px;
   border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:transparent}
 .bayc:hover{background:var(--fill)}
 .bayc.on{background:var(--fill2);box-shadow:inset 0 0 0 1px var(--ink)}
-.bayc canvas{width:100%;aspect-ratio:4/3;display:block;background:var(--fill)}
+.bayc canvas{width:100%;aspect-ratio:4/3;display:block;background:rgba(255,255,255,.05)}
 .bayc b{font-size:11.5px;font-weight:500;line-height:1.3}
 .bayc i{font-style:normal;font-size:10px;color:var(--ink3);line-height:1.4}
-.bayc .mine{position:absolute;top:5px;right:5px;font-size:9px;font-weight:400;
-  color:var(--ink2);padding:1px 5px;border:1px solid var(--line2);background:var(--paper)}
+.bayc .mine{position:absolute;top:5px;right:5px;font-size:8.5px;font-weight:400;
+  color:var(--paper);padding:1px 5px;background:var(--red);letter-spacing:.06em;
+  text-transform:uppercase}
 .drop{padding:var(--s5) var(--s4);text-align:center;border:1px dashed var(--line2);
   color:var(--ink3);font-size:11.5px}
 .drop.hot{border-color:var(--ink);border-style:solid;background:var(--fill)}
@@ -271,35 +329,42 @@ button{cursor:pointer;background:none;border:none}
 .drop b{font-weight:500;color:var(--ink2)}
 
 /* ══ 비행 화면 ═════════════════════════════════════════════ */
-#game{position:fixed;inset:0;background:var(--paper)}
+#game{position:fixed;inset:0;background:#0A0A0A}
 #game.off{display:none}
 #gl,#hud{position:absolute;inset:0;width:100%;height:100%;display:block}
 #hud{pointer-events:none}
 .ovl{position:absolute;pointer-events:none;font-family:var(--f-ui)}
-.chip{background:var(--paper);border:1px solid var(--line2)}
+.chip{background:rgba(10,10,10,.8);border:1px solid var(--line2)}
+
+/* 메뉴가 떠 있는 동안에는 비행 오버레이를 전부 숨긴다 */
+#game.attract #hud,#game.attract #feed,#game.attract #radio,#game.attract #tips,
+#game.attract #chatin,#game.attract #touch,#game.attract #msg,#game.attract #board{
+  display:none!important}
 
 #radio{left:12px;bottom:112px;width:min(320px,40vw);display:flex;flex-direction:column;
   gap:2px;justify-content:flex-end;max-height:170px;overflow:hidden}
-#radio .r{font-family:var(--f-kr);font-size:11.5px;line-height:1.35;padding:3px 7px;
-  align-self:flex-start;max-width:100%;background:rgba(255,255,255,.9);
-  border:1px solid var(--line2)}
-#radio .r b{font-size:11px;color:var(--ink);font-weight:500}
+#radio .r{font-family:var(--f-kr);font-size:11.5px;line-height:1.35;padding:3px 8px;
+  align-self:flex-start;max-width:100%;background:rgba(10,10,10,.72);
+  border:1px solid var(--line2);color:var(--ink)}
+#radio .r b{font-size:10.5px;color:var(--ink);font-weight:500}
 #radio .r.k b{color:var(--ink3);font-weight:400}
 
 #feed{right:12px;top:12px;display:flex;flex-direction:column;gap:3px;align-items:flex-end}
 #feed .f{display:flex;align-items:center;gap:6px;padding:3px 9px;font-size:11px;
-  background:rgba(255,255,255,.9);border:1px solid var(--line2);border-left:2px solid var(--red)}
-#feed .f b{font-size:11px;font-weight:500}
+  background:rgba(10,10,10,.75);border:1px solid var(--line2);border-left:2px solid var(--red);
+  color:var(--ink)}
+#feed .f b{font-size:10.5px;font-weight:500}
 #feed .f .k{color:var(--ink)} #feed .f .v{color:var(--red)}
 #feed .f i{font-style:normal;color:var(--ink3)}
 
 #board{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
-  background:rgba(10,10,10,.45)}
-#board .card{width:min(420px,90vw);background:var(--paper);border:1px solid var(--edge)}
-#board h3{margin:0;padding:0 var(--s5);height:40px;display:flex;align-items:center;
-  border-bottom:1px solid var(--line);font-size:12.5px;font-weight:500}
+  background:rgba(4,4,4,.7)}
+#board .card{width:min(420px,90vw);background:#0C0C0C;border:1px solid var(--edge)}
+#board h3{margin:0;padding:0 var(--s5);height:42px;display:flex;align-items:center;
+  border-bottom:1px solid var(--line);font-size:10.5px;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ink2)}
 #board .rows{display:flex;flex-direction:column}
-#board .rw{display:flex;align-items:center;gap:9px;padding:7px var(--s5);font-size:12.5px;
+#board .rw{display:flex;align-items:center;gap:9px;padding:8px var(--s5);font-size:12.5px;
   border-bottom:1px solid var(--line)}
 #board .rw:last-child{border-bottom:none}
 #board .rw.me{background:var(--fill2)}
@@ -308,42 +373,45 @@ button{cursor:pointer;background:none;border:none}
 
 #msg{position:absolute;left:50%;top:26%;transform:translateX(-50%);text-align:center;
   z-index:15;pointer-events:none}
-#msg .big{font-family:var(--f-ui);font-size:22px;font-weight:500;letter-spacing:-.01em;
-  color:var(--ink);background:rgba(255,255,255,.92);border:1px solid var(--edge);
-  padding:5px 16px;display:inline-block}
+#msg .big{font-family:var(--f-ui);font-size:22px;font-weight:500;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink);background:rgba(10,10,10,.82);
+  border:1px solid var(--edge);padding:6px 18px;display:inline-block}
 #msg .sub{font-family:var(--f-kr);font-size:11.5px;color:var(--ink2);margin-top:4px;
-  background:rgba(255,255,255,.92);border:1px solid var(--line2);padding:2px 9px;
+  background:rgba(10,10,10,.82);border:1px solid var(--line2);padding:2px 9px;
   display:inline-block}
 
 #tips{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
   display:flex;gap:0;font-size:10px;color:var(--ink3);white-space:nowrap;
-  background:rgba(255,255,255,.88);border:1px solid var(--line2)}
-#tips span{padding:3px 7px;border-right:1px solid var(--line)}
+  background:rgba(10,10,10,.7);border:1px solid var(--line2)}
+#tips span{padding:4px 8px;border-right:1px solid var(--line)}
 #tips span:last-child{border-right:none}
 #tips b{color:var(--ink);font-family:var(--f-num);font-weight:500;letter-spacing:-.02em}
 
 #chatin{position:absolute;left:12px;bottom:76px;width:min(330px,46vw);z-index:18;
   display:flex;align-items:stretch;pointer-events:auto;
-  background:var(--paper);border:1px solid var(--edge)}
-#chatin span{display:flex;align-items:center;padding:0 9px;color:var(--ink3);
-  font-size:10.5px;flex:0 0 auto;border-right:1px solid var(--line)}
-#chatin input{flex:1;min-width:0;padding:6px 9px;border:none;background:transparent;
+  background:rgba(10,10,10,.88);border:1px solid var(--edge)}
+#chatin span{display:flex;align-items:center;padding:0 10px;color:var(--ink3);
+  font-size:10px;flex:0 0 auto;border-right:1px solid var(--line);
+  letter-spacing:.1em;text-transform:uppercase}
+#chatin input{flex:1;min-width:0;padding:7px 9px;border:none;background:transparent;
   color:var(--ink);font-size:12px}
 #chatin input:focus{outline:none}
 
-#away{font-size:11px!important;font-weight:400;color:var(--red)!important}
+#away{font-size:11px!important;font-weight:400;color:var(--red)!important;
+  background:rgba(10,10,10,.85)!important}
 
 /* 터치 조종 */
 #touch{position:absolute;inset:0;z-index:12;display:none}
 #touch.on{display:block}
 #stick{position:absolute;left:16px;bottom:16px;width:120px;height:120px;
-  pointer-events:auto;touch-action:none;background:rgba(255,255,255,.55);
+  pointer-events:auto;touch-action:none;background:rgba(10,10,10,.45);
   border:1px solid var(--edge)}
 #stick .k{position:absolute;left:50%;top:50%;width:38px;height:38px;margin:-19px 0 0 -19px;
   background:var(--ink)}
 .tbtn{position:absolute;pointer-events:auto;touch-action:none;user-select:none;
-  display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:400;
-  color:var(--ink);background:rgba(255,255,255,.72);border:1px solid var(--edge)}
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink);
+  background:rgba(10,10,10,.6);border:1px solid var(--edge)}
 .tbtn.hit{background:var(--ink);color:var(--paper)}
 #tgun{right:16px;bottom:16px;width:78px;height:78px}
 #tmsl{right:102px;bottom:38px;width:56px;height:56px}
@@ -354,83 +422,102 @@ button{cursor:pointer;background:none;border:none}
 /* ══ 반응형 ════════════════════════════════════════════════ */
 @media (max-width:1100px){
   .grid{grid-template-columns:1fr;overflow-y:auto}
-  .col{min-height:auto;border-right:none;border-bottom:1px solid var(--line2)}
+  .col{min-height:auto;border-right:none;border-bottom:1px solid var(--line)}
   #radio{display:none}
 }
 @media (max-width:640px){
-  .topbar{height:auto;padding:8px var(--s3);gap:var(--s3);flex-wrap:wrap}
+  .topbar{height:auto;padding:10px var(--s3);gap:var(--s3);flex-wrap:wrap}
+  .brand b{font-size:16px}
   .colbd{padding:var(--s3);gap:var(--s4)}
   .sqk{flex-direction:column;align-items:flex-start;gap:var(--s3);padding:var(--s4)}
-  .sqk .big{font-size:30px}
+  .sqk .big{font-size:38px}
   .trade{grid-template-columns:1fr}
   .trade > div:first-child{border-right:none;border-bottom:1px solid var(--line)}
   #tips{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* 참가 — 스쿼크를 바로 받는 줄 */
+.joinrow{display:flex;align-items:stretch;border:1px solid var(--edge);border-top:none}
+.joinrow input{flex:1;min-width:0;padding:13px 10px 13px 24px;background:transparent;
+  border:none;color:var(--ink);font-family:var(--f-num);font-size:24px;font-weight:400;
+  letter-spacing:.44em;text-align:center}
+.joinrow input:focus{outline:none;background:var(--fill)}
+.joinrow input::placeholder{color:var(--ink3);letter-spacing:.44em}
+.joinrow button{padding:0 24px;border:none;border-left:1px solid var(--line);
+  font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink);background:transparent}
+.joinrow button:hover:not(:disabled){background:var(--ink);color:var(--paper)}
+.joinrow button:disabled{color:var(--ink3);cursor:not-allowed}
+.acts.two{grid-template-columns:repeat(2,1fr)}
+
 </style>
 </head>
 <body>
 <!-- ══════════════ 작전실 ══════════════ -->
 <div id="ops">
   <div class="topbar">
-    <div class="brand"><b>Rise Of Sky</b><span>SQUAWK &middot; AIR COMBAT</span></div>
+    <div class="brand"><b>Rise Of Sky</b><span>Squawk</span></div>
     <div class="stat"><span class="lbl">Credits</span><b id="tCred" class="num">0</b></div>
     <div class="stat"><span class="lbl">Kills / Losses</span><b id="tKd" class="num">0 / 0</b></div>
+    <span class="lbl" id="netMode">Peer-to-peer</span>
     <button class="link no" id="tLink" type="button"><i></i><span>Offline</span></button>
   </div>
 
-  <div class="grid">
-    <!-- 좌: 파일럿 기록 + 격납고 -->
-    <section class="col">
-      <div class="colhd"><h2>Pilot Record</h2><div class="rule"></div></div>
-      <div class="colbd scroll">
+  <div id="stage">
+    <!-- 왼쪽 — 기체에 관한 것 -->
+    <aside class="rail">
+      <section class="pnl">
+        <h3>Airframe<span class="rule"></span></h3>
+        <div id="dJet"></div>
+      </section>
+      <section class="pnl grow scroll">
+        <h3>Loadout<span class="rule"></span></h3>
+        <div id="dSlots"></div>
+        <h3 style="margin-top:4px">Inventory<span class="rule"></span></h3>
+        <div id="dBag"></div>
+      </section>
+    </aside>
+
+    <!-- 가운데 — 3D 기체가 서는 자리. 조작부는 아래에 -->
+    <main class="center">
+      <div class="plate" id="dPlate"></div>
+      <div id="flightPane"></div>
+    </main>
+
+    <!-- 오른쪽 — 파일럿과 교신 -->
+    <aside class="rail">
+      <section class="pnl">
+        <h3>Pilot<span class="rule"></span></h3>
         <div class="dogtag">
           <div class="cs">
-            <b id="dCall">—</b>
+            <b id="dCall">&mdash;</b>
             <button id="bRename" type="button">Change callsign</button>
           </div>
           <dl class="kv">
             <dt>Sorties</dt><dd id="dSorties">0</dd>
             <dt>Kills / Losses</dt><dd id="dKd">0 / 0</dd>
-            <dt>Accuracy</dt><dd id="dAcc">—</dd>
+            <dt>Accuracy</dt><dd id="dAcc">&mdash;</dd>
             <dt>Best streak</dt><dd id="dStreak">0</dd>
           </dl>
         </div>
-
-        <div id="dJet"></div>
+      </section>
+      <section class="pnl">
+        <h3>Controls<span class="rule"></span></h3>
         <div id="dCtrl"></div>
-
-        <div>
-          <div class="lbl" style="margin-bottom:8px">Loadout &middot; 3 slots</div>
-          <div class="slots" id="dSlots"></div>
+      </section>
+      <section class="pnl flush grow">
+        <h3>Comms<span class="rule"></span>
+          <button class="btn sm" id="bTrade" type="button">Trade</button></h3>
+        <div class="log scroll" id="opsLog"></div>
+        <div class="brevity" id="opsBrev"></div>
+        <div class="composer">
+          <input id="opsMsg" type="text" placeholder="Transmit&hellip;" maxlength="180"
+                 autocomplete="off">
+          <button id="bSend" type="button">Send</button>
         </div>
-
-        <div>
-          <div class="lbl" style="margin-bottom:8px">Inventory</div>
-          <div class="parts" id="dBag"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 중: 편대 -->
-    <section class="col">
-      <div class="colhd"><h2>Flight</h2><div class="rule"></div>
-        <span class="lbl" id="netMode">P2P</span></div>
-      <div class="colbd scroll" id="flightPane"></div>
-    </section>
-
-    <!-- 우: 교신 + 거래 -->
-    <section class="col">
-      <div class="colhd"><h2>Comms</h2><div class="rule"></div>
-        <button class="btn sm" id="bTrade" type="button">Trade</button></div>
-      <div class="log scroll" id="opsLog"></div>
-      <div class="brevity" id="opsBrev"></div>
-      <div class="composer">
-        <input id="opsMsg" type="text" placeholder="Transmit on flight channel…" maxlength="180"
-               autocomplete="off">
-        <button id="bSend" type="button">Send</button>
-      </div>
-    </section>
+      </section>
+    </aside>
   </div>
 </div>
 
@@ -598,10 +685,19 @@ function renderPilot(){
   $("#dStreak").textContent  = P.streak;
   $("#dAcc").textContent     = P.shots > 40 ? Math.round(P.hits/P.shots*100) + "%" : "—";
 
+  const pl = $("#dPlate");
+  if (pl){
+    const pj = P.jet === "custom"
+      ? { nameKo:(P.custom && P.custom.name) || "My airframe", note:"Imported model" }
+      : jetDef(P.jet);
+    pl.innerHTML = "";
+    pl.appendChild(el("b", null, esc(pj.nameKo)));
+    pl.appendChild(el("span", null, esc(pj.note || "")));
+  }
+
   const jw = $("#dJet");
   if (jw){
     jw.innerHTML = "";
-    jw.appendChild(el("div","lbl","Airframe"));
     jw.style.cssText = "display:flex;flex-direction:column;gap:8px";
     const row = el("div","slot t2");
     row.appendChild(el("div","t"));
@@ -618,7 +714,6 @@ function renderPilot(){
   if (cw){
     cw.innerHTML = "";
     cw.style.cssText = "display:flex;flex-direction:column;gap:9px";
-    cw.appendChild(el("div","lbl","Controls"));
     const seg = el("div","seg");
     [["key","Keyboard"],["mouse","Mouse"]].forEach(([k,label]) => {
       const b = el("button", P.ctrl === k ? "on" : "", label); b.type = "button";
@@ -1211,34 +1306,21 @@ function sectionHead(title, hint){
 
 function netCheckStrip(){
   const map = {
-    idle:    { c:"#FFFFFF", t:"Not checked", d:"Run a check before you invite anyone." },
-    running: { c:"#8A8A8A", t:"Checking…",   d:"Contacting the broker and a STUN server." },
-    ready:   { c:"#000000", t:"Ready",       d:NetCheck.detail },
-    local:   { c:"#E11900", t:"Local only",  d:NetCheck.detail },
-    blocked: { c:"#E11900", t:"Blocked",     d:NetCheck.detail }
+    idle:    { c:"var(--ink3)", t:"Not checked" },
+    running: { c:"var(--ink2)", t:"Checking…" },
+    ready:   { c:"var(--ink)",  t:"Ready" },
+    local:   { c:"var(--red)",  t:"Local only" },
+    blocked: { c:"var(--red)",  t:"Blocked" }
   };
   const m = map[NetCheck.state] || map.idle;
-  const w = el("div","brief");
-  const row = el("div");
-  row.style.cssText = "display:flex;align-items:center;gap:10px";
-  const dot = el("span");
-  dot.style.cssText = "width:10px;height:10px;flex:0 0 auto;background:" + m.c +
-                      ";outline:1px solid #000;outline-offset:2px";
-  row.appendChild(dot);
-  const nm = el("div");
-  nm.style.cssText = "flex:1;min-width:0";
-  nm.appendChild(el("div", null, "<b style='font-size:13.5px'>Connectivity — " + esc(m.t) + "</b>"));
-  row.appendChild(nm);
-  const btn = mkBtn(NetCheck.state === "idle" ? "Run check" : "Re-check", "sm", () => NetCheck.run());
+  const w = el("div","strip");
+  const dot = el("i"); dot.style.background = m.c; w.appendChild(dot);
+  w.appendChild(el("span", null, "Connectivity &mdash; " + esc(m.t)));
+  w.appendChild(el("span","rule"));
+  const btn = mkBtn(NetCheck.state === "idle" ? "Run check" : "Re-check", "sm",
+                    () => NetCheck.run());
   if (NetCheck.state === "running") btn.disabled = true;
-  row.appendChild(btn);
-  w.appendChild(row);
-  w.appendChild(el("div","note", esc(m.d)));
-  if (NetCheck.state === "local" || NetCheck.state === "blocked"){
-    w.appendChild(el("div","warn",
-      "Fix: add a free TURN relay to the <code>ICE</code> list near the top of this file. " +
-      "Without one, browsers behind strict NAT cannot reach each other directly."));
-  }
+  w.appendChild(btn);
   return w;
 }
 
@@ -1261,49 +1343,42 @@ function renderFlight(){
 
   /* ── 편대에 들어가 있지 않을 때 ── */
   if (!Net.up){
-    /* 단독 */
-    pane.appendChild(sectionHead("Solo", "no connection needed"));
-    const solo = el("div","brief");
-    solo.appendChild(el("div","note",
-      "Fly against training drones on your own. Learn the aircraft, earn credits toward parts. " +
-      "Nothing leaves your machine."));
-    solo.appendChild(mkBtn("Launch solo sortie","pri", () => startSortie(true)));
-    pane.appendChild(solo);
-
-    /* 멀티플레이 */
-    pane.appendChild(sectionHead("Multiplayer", "browser to browser"));
     pane.appendChild(netCheckStrip());
 
-    const mk = el("div","brief");
-    mk.appendChild(el("div","lbl","Host a flight"));
-    mk.appendChild(el("div","note",
-      "You are assigned a <b>squawk</b> — four digits, each 0–7, exactly like a real " +
-      "transponder code. Only pilots who know it can reach you, and anyone not on your " +
-      "invite list still needs your approval."));
-    mk.appendChild(mkBtn("Open a flight","", () => Net.host()));
-    pane.appendChild(mk);
+    const acts = el("div","acts two");
+    const mk = (title, sub, fn) => {
+      const b = el("button"); b.type = "button";
+      b.appendChild(document.createTextNode(title));
+      b.appendChild(el("span", null, esc(sub)));
+      b.addEventListener("click", fn);
+      return b;
+    };
+    acts.appendChild(mk("Solo sortie", "Train against drones", () => startSortie(true)));
+    acts.appendChild(mk("Open a flight", "Get a squawk, invite friends", () => Net.host()));
+    pane.appendChild(acts);
 
-    const jn = el("div","brief");
-    jn.appendChild(el("div","lbl","Join a flight"));
-    const inp = el("input","inp code");
-    inp.maxLength = 4; inp.inputMode = "numeric";
-    inp.placeholder = "0000"; inp.setAttribute("aria-label","Squawk");
-    const go = mkBtn("Connect","pri", () => Net.join(inp.value));
-    go.classList.add("wide"); go.disabled = true;
+    const jr = el("div","joinrow");
+    const inp = el("input"); inp.type = "text"; inp.maxLength = 4;
+    inp.inputMode = "numeric"; inp.placeholder = "0000";
+    inp.setAttribute("aria-label", "Squawk");
+    const go = el("button"); go.type = "button"; go.textContent = "Join"; go.disabled = true;
     inp.addEventListener("input", () => {
       inp.value = inp.value.replace(/[^0-7]/g, "").slice(0, 4);
       go.disabled = inp.value.length !== 4;
     });
-    inp.addEventListener("keydown", e => { if (e.key === "Enter" && !go.disabled) Net.join(inp.value); });
-    jn.appendChild(inp); jn.appendChild(go);
-    jn.appendChild(el("div","note",
-      "Enter the squawk a friend gave you. 7500, 7600 and 7700 are real emergency codes " +
-      "and are never issued here."));
-    pane.appendChild(jn);
+    inp.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !go.disabled) Net.join(inp.value);
+    });
+    go.addEventListener("click", () => Net.join(inp.value));
+    jr.appendChild(inp); jr.appendChild(go);
+    pane.appendChild(jr);
 
-    pane.appendChild(el("div","warn",
-      "Peers connect directly to each other over WebRTC — there is no game server. " +
-      "The host's browser relays the flight, so if the host closes the page the flight ends."));
+    if (NetCheck.state === "local" || NetCheck.state === "blocked")
+      pane.appendChild(el("div","warn", esc(NetCheck.detail)));
+    else
+      pane.appendChild(el("div","note",
+        "A squawk is four digits, each 0–7 — a real transponder code. " +
+        "Only pilots who know yours can reach you."));
     return;
   }
 
@@ -2356,6 +2431,89 @@ function myJetKey(){
     : "");
 }
 
+/* ── 전시 모드 ─────────────────────────────────────────────
+   메뉴가 떠 있는 동안에도 실제 월드를 계속 렌더한다. 내 기체가
+   화면 한가운데에서 천천히 돌아간다 — '게임을 켰다'는 느낌은
+   대부분 여기서 나온다. 비행 중에는 멈춘다. */
+const _atA = new THREE.Vector3(), _atB = new THREE.Vector3();
+const Attract = {
+  on:false, raf:0, t:0, last:0, jet:null, key:null, ready:false,
+
+  boot(){
+    if (this.ready) return false;
+    World.init($("#gl"));
+    this.ready = true;
+    return true;
+  },
+
+  /* 격납고에서 기체를 바꾸면 전시물도 같이 바뀐다 */
+  sync(){
+    if (!this.ready) return;
+    const k = myJetKey();
+    if (this.jet && this.key === k) return;
+    if (this.jet) World.scene.remove(this.jet);
+    this.jet = buildJet(new THREE.Color(P.color).getHex(), P.jet, P.custom);
+    this.key = k;
+    this.jet.visible = this.on;
+    World.scene.add(this.jet);
+  },
+
+  start(){
+    this.boot();
+    this.sync();
+    this.on = true;
+    if (this.jet) this.jet.visible = true;
+    const g = $("#game");
+    g.classList.remove("off"); g.classList.add("attract");
+    World.renderer.toneMappingExposure = .88;
+    World.camera.fov = 30; World.camera.updateProjectionMatrix();
+    this.last = now();
+    cancelAnimationFrame(this.raf);
+    this.raf = requestAnimationFrame(() => this.step());
+  },
+
+  stop(){
+    this.on = false;
+    cancelAnimationFrame(this.raf); this.raf = 0;
+    if (this.jet) this.jet.visible = false;
+    $("#game").classList.remove("attract");
+    if (World.ready){
+      World.renderer.toneMappingExposure = 1;
+      World.camera.fov = 62; World.camera.updateProjectionMatrix();
+    }
+  },
+
+  step(){
+    if (!this.on) return;
+    this.raf = requestAnimationFrame(() => this.step());
+    const t = now();
+    let dt = (t - this.last) / 1000; this.last = t;
+    if (dt > .1) dt = .1;
+    this.t += dt;
+
+    const j = this.jet, c = World.camera;
+    if (!j) return;
+
+    /* 기체는 고도 760 에 기수를 -Z 로 두고 아주 얕게 흔들린다 */
+    const cen = _atA.set(0, 760, 0);
+    j.position.copy(cen);
+    j.quaternion.set(0, 0, 0, 1);
+    j.rotateZ(Math.sin(this.t * .26) * .055);
+    j.rotateX(Math.sin(this.t * .19) * .03);
+    const fl = j.userData.flame;
+    if (fl) fl.material.opacity = .28 + Math.sin(this.t * 1.7) * .05;
+
+    /* 카메라가 그 둘레를 천천히 돈다 */
+    const a = this.t * .1, r = 54;
+    c.position.set(cen.x + Math.sin(a) * r,
+                   cen.y + 10 + Math.sin(this.t * .31) * 1.8,
+                   cen.z + Math.cos(a) * r);
+    c.up.set(0, 1, 0);
+    c.lookAt(_atB.set(cen.x, cen.y - 2.2, cen.z));   // 기체를 화면 위쪽에 앉힌다
+    World.renderer.render(World.scene, World.camera);
+  }
+};
+
 /* ── 출격 / 귀환 ─────────────────────────────────────────── */
 function freshMe(){
   const m = mods();
@@ -2386,6 +2544,7 @@ function spawnPoint(me){
 function startSortie(solo){
   if (Game.running) return;
   Game.solo = !!solo;
+  Attract.stop();
   $("#ops").classList.add("off");
   $("#game").classList.remove("off");
 
@@ -2434,9 +2593,9 @@ function endSortie(){
   $("#board").classList.add("hide"); Game.showBoard = false;
   $("#touch").classList.remove("on");
   if (document.pointerLockElement) document.exitPointerLock();
-  $("#game").classList.add("off");
   $("#ops").classList.remove("off");
   if (Game.jet) Game.jet.visible = false;
+  Attract.start();
   clearDrones();
   save(); renderPilot(); renderFlight();
 }
@@ -3089,8 +3248,8 @@ function loop(){
    피치 사다리·속도/고도 테이프·방위 테이프·레이더·조준.
    단위는 실제 계기대로 KT / FT / G.
    ═════════════════════════════════════════════════════════════ */
-const HUD_A = "#0A0A0A", HUD_G = "#0A0A0A", HUD_R = "#E11900",
-      HUD_D = "rgba(10,10,10,.42)";
+const HUD_A = "#FFFFFF", HUD_G = "#FFFFFF", HUD_R = "#FF2D16",
+      HUD_D = "rgba(255,255,255,.52)";
 const _pv = new THREE.Vector3(), _wu = new THREE.Vector3(), _iq = new THREE.Quaternion();
 
 function proj(p){
@@ -3110,7 +3269,7 @@ function drawHUD(){
   c.clearRect(0,0,W,H);
   c.lineWidth = 1;
   c.strokeStyle = HUD_A; c.fillStyle = HUD_A;
-  c.shadowColor = "rgba(255,255,255,.92)"; c.shadowBlur = 3;
+  c.shadowColor = "rgba(0,0,0,.72)"; c.shadowBlur = 3;
 
   const cx = W/2, cy = H/2;
   const cam = World.camera;
@@ -3234,7 +3393,7 @@ function drawHUD(){
     txt(c, (dist/1000).toFixed(1) + "km", p.x, p.y + s + 24, "center", 10, HUD_D);
     if (hp != null){
       const bw = s*2, hpf = clamp(hp/100, 0, 1);
-      c.fillStyle = "#FFFFFF"; c.fillRect(p.x-s, p.y-s-8, bw, 3);
+      c.fillStyle = "rgba(10,10,10,.6)"; c.fillRect(p.x-s, p.y-s-8, bw, 3);
       c.strokeStyle = HUD_D; c.lineWidth = .7; c.strokeRect(p.x-s, p.y-s-8, bw, 3);
       c.fillStyle = hpf > .5 ? HUD_G : hpf > .22 ? HUD_A : HUD_R;
       c.fillRect(p.x-s, p.y-s-8, bw*hpf, 3);
@@ -3286,7 +3445,7 @@ function drawHUD(){
   const rr = 54, rx = cx, ry = H - rr - 48;
   const range = 2000 * (1 + (me.mods.rdr || 0));
   c.globalAlpha = 1;
-  c.fillStyle = "rgba(255,255,255,.88)"; c.strokeStyle = HUD_A; c.lineWidth = 1;
+  c.fillStyle = "rgba(10,10,10,.58)"; c.strokeStyle = HUD_A; c.lineWidth = 1;
   c.beginPath(); c.arc(rx, ry, rr, 0, 7); c.fill(); c.stroke();
   c.strokeStyle = HUD_D; c.lineWidth = .7;
   c.beginPath(); c.arc(rx, ry, rr*.5, 0, 7); c.stroke();
@@ -3306,7 +3465,7 @@ function drawHUD(){
     }
   };
   for (const [pid, r] of Game.remotes) if (r.st !== "down") blip(r.pos, HUD_R);
-  for (const d of Game.drones) if (d.alive) blip(d.pos, "rgba(0,0,0,.5)");
+  for (const d of Game.drones) if (d.alive) blip(d.pos, "rgba(255,255,255,.6)");
   c.fillStyle = HUD_G;
   c.beginPath(); c.moveTo(rx, ry-5); c.lineTo(rx-4, ry+4); c.lineTo(rx+4, ry+4); c.closePath(); c.fill();
   txt(c, (range/1000).toFixed(1) + "km", rx, ry + rr + 12, "center", 10, HUD_D);
@@ -3369,7 +3528,7 @@ function tape(c, x, cy, val, major, minor, unit, side){
   c.restore();
   c.globalAlpha = 1;
   /* 현재값 상자 */
-  c.strokeStyle = HUD_A; c.fillStyle = "rgba(255,255,255,.92)"; c.lineWidth = 1;
+  c.strokeStyle = HUD_A; c.fillStyle = "rgba(10,10,10,.68)"; c.lineWidth = 1;
   const bw = 56, bh = 19;
   c.fillRect(x-bw/2, cy-bh/2, bw, bh);
   c.strokeRect(x-bw/2, cy-bh/2, bw, bh);
@@ -3380,7 +3539,7 @@ function tape(c, x, cy, val, major, minor, unit, side){
 /* 가로 막대 */
 function bar(c, x, y, w, h, frac, col, label){
   c.globalAlpha = .95;
-  c.fillStyle = "#FFFFFF"; c.fillRect(x, y, w, h);
+  c.fillStyle = "rgba(10,10,10,.6)"; c.fillRect(x, y, w, h);
   c.fillStyle = col; c.fillRect(x, y, w*clamp(frac,0,1), h);
   c.strokeStyle = HUD_D; c.lineWidth = .8; c.strokeRect(x, y, w, h);
   txt(c, label, x + w + 9, y + h/2, "left", 11, col);
@@ -3772,7 +3931,8 @@ function openHangar(){
 
 /* 내 기체를 씬에서 교체한다 */
 function swapMyJet(){
-  if (!World.ready || !Game.jet) return;
+  Attract.sync();
+  if (!World.ready || !Game.jet){ if (Net.up) Net.announce(); return; }
   World.scene.remove(Game.jet);
   Game.jet = buildJet(new THREE.Color(P.color).getHex(), P.jet, P.custom);
   Game.jetKey = myJetKey();
@@ -3814,6 +3974,8 @@ async function restoreCustom(){
   }
 
   restoreCustom();
+  /* 월드 생성은 무겁다. 화면이 먼저 그려지고 나서 띄운다. */
+  setTimeout(() => { try{ Attract.start(); }catch(e){ console.warn(e); } }, 60);
 
   addEventListener("beforeunload", () => { save(); try{ Net.teardown(); }catch(e){} });
   addEventListener("hashchange", () => {
