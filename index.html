@@ -1,0 +1,3914 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="description" content="Invite-only 3D air combat. Only pilots who know your four-digit squawk can join. Peer-to-peer, no server.">
+<title>Rise Of Sky</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+
+<style>
+/* ── 리퀴드 글래스 · 주간 비행 ───────────────────────────────
+   흰 종이 위에 유리판을 겹쳐 놓은 관제 콘솔.
+   중성색은 순회색이 아니라 하늘색 쪽으로 살짝 기울인 값을 쓴다.
+   과감한 색은 한 곳(스카이 블루)에만 쓰고 나머지는 조용히 둔다. */
+:root{
+  /* 바탕과 잉크 */
+  --paper:#F6FAFE;  --ink:#0F1E2E;  --ink2:#59718A;  --ink3:#8DA2B6;
+  /* 강조 — 하늘 */
+  --sky:#3E96DC;    --sky-deep:#14639F;  --sky-mist:#E4F1FC;  --sky-edge:#A8D2F0;
+  /* 의미색 */
+  --good:#1F9D74;   --caution:#C9822A;   --bad:#D2564F;
+  /* 유리 */
+  --gl:rgba(255,255,255,.56);
+  --gl-2:rgba(255,255,255,.74);
+  --gl-3:rgba(255,255,255,.88);
+  --gl-line:rgba(19,60,100,.10);
+  --gl-line-2:rgba(19,60,100,.18);
+  --gl-top:rgba(255,255,255,.92);
+  --blur:saturate(180%) blur(22px);
+  --lift:0 1px 0 var(--gl-top) inset, 0 12px 34px rgba(18,62,105,.11), 0 2px 7px rgba(18,62,105,.05);
+  --lift-sm:0 1px 0 rgba(255,255,255,.85) inset, 0 4px 14px rgba(18,62,105,.09);
+  /* 서체 */
+  --f-ui:"IBM Plex Sans","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-kr:"IBM Plex Sans KR","IBM Plex Sans",system-ui,sans-serif;
+  --f-lb:"IBM Plex Sans Condensed","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,monospace;
+  --s1:4px; --s2:8px; --s3:12px; --s4:18px; --s5:26px; --s6:40px;
+  --r-lg:20px; --r-md:13px; --r-sm:9px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--f-kr); font-size:14px; line-height:1.6;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+:focus-visible{outline:2px solid var(--sky);outline-offset:2px;border-radius:4px}
+::selection{background:var(--sky-mist);color:var(--sky-deep)}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.lbl{font-family:var(--f-lb);font-size:10.5px;font-weight:600;letter-spacing:.15em;
+     text-transform:uppercase;color:var(--ink3)}
+.hide{display:none!important}
+
+.scroll{overflow-y:auto;scrollbar-width:thin;
+  scrollbar-color:rgba(19,60,100,.22) transparent}
+.scroll::-webkit-scrollbar{width:9px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(19,60,100,.2);border-radius:99px;
+  border:3px solid transparent;background-clip:content-box}
+.scroll::-webkit-scrollbar-track{background:transparent}
+
+/* ══ 작전실 ════════════════════════════════════════════════ */
+#ops{
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  background:
+    radial-gradient(720px 520px at 10% -8%,  rgba(120,192,242,.40), transparent 62%),
+    radial-gradient(660px 460px at 92% 4%,   rgba(163,212,247,.34), transparent 60%),
+    radial-gradient(980px 640px at 46% 112%, rgba(203,231,250,.52), transparent 66%),
+    var(--paper);
+}
+#ops.off{display:none}
+
+/* 상단 레일 */
+.topbar{
+  flex:0 0 auto; display:flex; align-items:center; gap:var(--s4);
+  margin:var(--s3) var(--s3) 0; padding:11px var(--s4);
+  background:var(--gl-2); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border:1px solid rgba(255,255,255,.8); border-radius:var(--r-lg); box-shadow:var(--lift);
+}
+.brand{display:flex;align-items:baseline;gap:9px;margin-right:auto;min-width:0}
+.brand b{font-family:var(--f-ui);font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.brand span{font-family:var(--f-num);font-size:10px;letter-spacing:.18em;color:var(--ink3)}
+.stat{display:flex;flex-direction:column;gap:0;line-height:1.25;text-align:right}
+.stat b{font-family:var(--f-num);font-size:15px;font-weight:600;color:var(--sky-deep)}
+.link{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:99px;
+  background:var(--gl-3); border:1px solid var(--gl-line); color:var(--ink2);
+  font-family:var(--f-lb);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  box-shadow:var(--lift-sm)}
+.link.on{color:var(--good);border-color:rgba(31,157,116,.3);background:rgba(232,250,244,.8)}
+.link i{width:6px;height:6px;border-radius:50%;background:currentColor;font-style:normal;
+  box-shadow:0 0 0 3px currentColor;opacity:.9;transform:scale(.62)}
+
+/* 세 장의 유리판 */
+.grid{flex:1;display:grid;grid-template-columns:300px minmax(0,1fr) 344px;
+  gap:var(--s3); padding:var(--s3); min-height:0}
+.col{
+  display:flex;flex-direction:column;min-height:0;min-width:0;
+  background:var(--gl); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border:1px solid rgba(255,255,255,.78); border-radius:var(--r-lg);
+  box-shadow:var(--lift); overflow:hidden;
+}
+.colhd{flex:0 0 auto;display:flex;align-items:center;gap:10px;
+  padding:14px var(--s4) 12px;border-bottom:1px solid var(--gl-line)}
+.colhd h2{margin:0;font-family:var(--f-lb);font-size:11.5px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ink2)}
+.colhd .rule{flex:1}
+.colbd{padding:var(--s4);display:flex;flex-direction:column;gap:var(--s4);min-height:0}
+.colbd.tight{gap:var(--s3)}
+
+/* 파일럿 카드 */
+.dogtag{border-radius:var(--r-md);padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3);
+  background:linear-gradient(158deg, rgba(255,255,255,.92), rgba(226,241,253,.72));
+  border:1px solid rgba(255,255,255,.9); box-shadow:var(--lift-sm)}
+.dogtag .cs{display:flex;align-items:center;gap:10px}
+.dogtag .cs b{font-family:var(--f-ui);font-size:24px;font-weight:600;letter-spacing:-.015em;
+  color:var(--sky-deep);line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.dogtag .cs button{margin-left:auto;font-size:11.5px;color:var(--ink3);flex:0 0 auto}
+.dogtag .cs button:hover{color:var(--sky)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:3px var(--s3);align-items:baseline;margin:0}
+.kv dt{font-family:var(--f-lb);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink3)}
+.kv dd{margin:0;font-family:var(--f-num);font-size:13px;color:var(--ink);text-align:right}
+
+/* 장착 슬롯 */
+.slots{display:flex;flex-direction:column;gap:7px}
+.slot{display:flex;align-items:center;gap:11px;padding:10px 12px;min-height:46px;
+  border-radius:var(--r-sm);background:var(--gl-2);border:1px solid var(--gl-line)}
+.slot.empty{background:rgba(255,255,255,.3);border-style:dashed;border-color:var(--gl-line-2)}
+.slot .t{width:3px;align-self:stretch;border-radius:99px;background:var(--ink3)}
+.slot.t1 .t{background:var(--ink3)} .slot.t2 .t{background:var(--sky)}
+.slot.t3 .t{background:var(--caution)}
+.slot .nm{flex:1;min-width:0}
+.slot .nm b{display:block;font-size:13px;font-weight:600;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot .nm i{font-style:normal;font-size:11px;color:var(--ink3)}
+.slot .x{color:var(--ink3);font-size:14px;line-height:1;padding:3px 5px;border-radius:6px}
+.slot .x:hover{color:var(--bad);background:rgba(210,86,79,.1)}
+
+/* 부품 목록 */
+.parts{display:flex;flex-direction:column;gap:6px}
+.part{display:flex;align-items:center;gap:11px;padding:9px 12px;min-height:44px;
+  border-radius:var(--r-sm);background:var(--gl-2);border:1px solid var(--gl-line);
+  transition:background .14s,border-color .14s}
+.part:hover{background:var(--gl-3);border-color:var(--sky-edge)}
+.part .t{width:3px;align-self:stretch;border-radius:99px}
+.part.t1 .t{background:var(--ink3)} .part.t2 .t{background:var(--sky)}
+.part.t3 .t{background:var(--caution)}
+.part .nm{flex:1;min-width:0}
+.part .nm b{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.part .nm i{font-style:normal;font-size:10.5px;color:var(--ink3)}
+.part .qty{font-family:var(--f-num);font-size:12px;color:var(--ink3);min-width:24px;text-align:right}
+.part .act{font-family:var(--f-lb);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--sky-deep);background:var(--sky-mist);border:1px solid rgba(62,150,220,.24);
+  padding:5px 10px;border-radius:99px;white-space:nowrap}
+.part .act:hover{background:#D3E9FA}
+.part .act:disabled{opacity:.42;cursor:not-allowed}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 17px;border-radius:99px;
+  background:var(--gl-3);border:1px solid var(--gl-line-2);color:var(--ink);
+  font-family:var(--f-lb);font-size:12px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;box-shadow:var(--lift-sm);
+  transition:background .14s,border-color .14s,transform .1s,box-shadow .14s}
+.btn:hover{background:#fff;border-color:var(--sky-edge)}
+.btn:active{transform:translateY(1px)}
+.btn.pri{background:linear-gradient(180deg,#57A6E6,#2F86CE);border-color:#2B7EC4;color:#fff;
+  box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 6px 18px rgba(30,110,180,.28)}
+.btn.pri:hover{background:linear-gradient(180deg,#63AFEC,#3690D8)}
+.btn.dgr{color:var(--bad);border-color:rgba(210,86,79,.3);background:rgba(255,244,243,.86)}
+.btn.dgr:hover{background:#FFECEB}
+.btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+.btn.sm{padding:7px 12px;font-size:10.5px}
+.btn.wide{width:100%}
+
+/* 입력 */
+.field{display:flex;flex-direction:column;gap:7px}
+.inp{padding:11px 13px;border-radius:var(--r-sm);width:100%;
+  background:rgba(255,255,255,.82);border:1px solid var(--gl-line-2);color:var(--ink);
+  font-family:var(--f-kr);font-size:14px;transition:border-color .14s,box-shadow .14s}
+.inp:focus{outline:none;border-color:var(--sky);box-shadow:0 0 0 3px rgba(62,150,220,.16)}
+.inp::placeholder{color:var(--ink3)}
+.inp.code{font-family:var(--f-num);font-size:30px;font-weight:500;letter-spacing:.32em;
+  text-align:center;color:var(--sky-deep);padding:15px 12px 15px 20px}
+
+/* 편대 카드 */
+.brief{border-radius:var(--r-md);padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3);
+  background:var(--gl-2);border:1px solid rgba(255,255,255,.86);box-shadow:var(--lift-sm)}
+.sqk{display:flex;align-items:center;gap:var(--s4);padding:var(--s4) var(--s5);
+  border-radius:var(--r-md);
+  background:linear-gradient(140deg, rgba(255,255,255,.94), rgba(214,235,251,.8));
+  border:1px solid var(--sky-edge);
+  box-shadow:0 1px 0 rgba(255,255,255,.95) inset, 0 10px 30px rgba(30,110,180,.14)}
+.sqk .big{font-family:var(--f-num);font-size:44px;font-weight:500;letter-spacing:.14em;
+  color:var(--sky-deep);line-height:1}
+.sqk .meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sqk .meta p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.5}
+
+/* 명단 */
+.roster{display:flex;flex-direction:column;gap:6px}
+.pl{display:flex;align-items:center;gap:11px;padding:10px 13px;min-height:48px;
+  border-radius:var(--r-sm);background:var(--gl-2);border:1px solid var(--gl-line)}
+.pl .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:currentColor;
+  box-shadow:0 0 0 3px color-mix(in srgb, currentColor 22%, transparent)}
+.pl .who{flex:1;min-width:0}
+.pl .who b{font-family:var(--f-ui);font-size:14px;font-weight:600;display:block;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl .who i{font-style:normal;font-size:10.5px;color:var(--ink3);font-family:var(--f-lb);
+  letter-spacing:.08em;text-transform:uppercase}
+.pl .kd{font-family:var(--f-num);font-size:12.5px;color:var(--ink3);white-space:nowrap}
+.pl .kd b{color:var(--ink)}
+.pl .tag{font-family:var(--f-lb);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  padding:3px 8px;border-radius:99px;background:var(--gl-3);border:1px solid var(--gl-line);
+  color:var(--ink3)}
+.pl .tag.host{color:var(--sky-deep);background:var(--sky-mist);border-color:rgba(62,150,220,.26)}
+.pl .tag.you{color:var(--ink)}
+
+.empty{padding:var(--s5) var(--s4);text-align:center;border-radius:var(--r-md);
+  border:1px dashed var(--gl-line-2);color:var(--ink3);font-size:13px;background:rgba(255,255,255,.34)}
+.empty b{display:block;font-family:var(--f-lb);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:5px}
+.note{font-size:12.5px;color:var(--ink2);line-height:1.65}
+.note b{color:var(--ink);font-weight:600}
+.note code{font-family:var(--f-num);font-size:11.5px;color:var(--sky-deep);
+  background:var(--sky-mist);padding:2px 6px;border-radius:5px}
+.warn{border-radius:var(--r-sm);padding:11px 14px;font-size:12.5px;line-height:1.6;
+  color:#7A5B22;background:rgba(253,246,232,.86);border:1px solid rgba(201,130,42,.24)}
+
+.req{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:var(--r-sm);
+  background:var(--sky-mist);border:1px solid rgba(62,150,220,.26)}
+.req .who{flex:1;font-family:var(--f-ui);font-size:14px;font-weight:600}
+
+/* 교신 */
+.log{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;
+  padding:var(--s3) var(--s4);overflow-y:auto}
+.msg{display:flex;gap:9px;font-size:13px;line-height:1.55;word-break:break-word}
+.msg .from{font-family:var(--f-lb);font-size:11.5px;font-weight:600;letter-spacing:.06em;
+  color:var(--sky-deep);flex:0 0 auto;max-width:98px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;padding-top:1px}
+.msg .txt{flex:1;min-width:0;color:var(--ink)}
+.msg.sys .from{color:var(--ink3)} .msg.sys .txt{color:var(--ink2);font-size:12.5px}
+.composer{flex:0 0 auto;display:flex;gap:var(--s2);padding:var(--s3) var(--s4);
+  border-top:1px solid var(--gl-line)}
+.composer input{flex:1;min-width:0;padding:10px 14px;border-radius:99px;
+  background:rgba(255,255,255,.86);border:1px solid var(--gl-line-2);
+  color:var(--ink);font-size:13.5px}
+.composer input:focus{outline:none;border-color:var(--sky);box-shadow:0 0 0 3px rgba(62,150,220,.15)}
+.composer button{padding:0 16px;border-radius:99px;color:#fff;
+  background:linear-gradient(180deg,#57A6E6,#2F86CE);
+  font-family:var(--f-lb);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase}
+.brevity{display:flex;flex-wrap:wrap;gap:5px;padding:0 var(--s4) var(--s3)}
+.brevity button{font-family:var(--f-lb);font-size:10.5px;letter-spacing:.07em;
+  text-transform:uppercase;padding:5px 11px;border-radius:99px;color:var(--ink2);
+  background:var(--gl-2);border:1px solid var(--gl-line)}
+.brevity button:hover{color:var(--sky-deep);border-color:var(--sky-edge);background:#fff}
+
+/* ══ 모달 ══════════════════════════════════════════════════ */
+.veil{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  padding:var(--s4);background:rgba(160,196,226,.34);backdrop-filter:blur(7px)}
+.sheet{width:min(600px,100%);max-height:88vh;display:flex;flex-direction:column;
+  border-radius:var(--r-lg);background:rgba(255,255,255,.86);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid rgba(255,255,255,.92);
+  box-shadow:0 1px 0 rgba(255,255,255,.95) inset, 0 28px 70px rgba(18,62,105,.24);
+  overflow:hidden}
+.sheet header{display:flex;align-items:center;gap:10px;padding:16px var(--s5) 14px;
+  border-bottom:1px solid var(--gl-line)}
+.sheet header h3{margin:0;font-family:var(--f-ui);font-size:15px;font-weight:600;
+  letter-spacing:-.01em;color:var(--ink)}
+.sheet header .x{margin-left:auto;color:var(--ink3);font-size:16px;line-height:1;
+  padding:5px 8px;border-radius:8px}
+.sheet header .x:hover{color:var(--bad);background:rgba(210,86,79,.1)}
+.sheet .body{padding:var(--s5);display:flex;flex-direction:column;gap:var(--s4);
+  overflow-y:auto;min-height:0}
+.sheet footer{display:flex;gap:var(--s2);padding:var(--s3) var(--s5) var(--s4);
+  justify-content:flex-end;border-top:1px solid var(--gl-line)}
+
+/* 거래 */
+.trade{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.trade > div{padding:var(--s4);border-radius:var(--r-md);display:flex;flex-direction:column;
+  gap:var(--s2);min-height:172px;background:var(--gl-2);border:1px solid var(--gl-line)}
+.trade h4{margin:0 0 3px;font-family:var(--f-lb);font-size:10.5px;font-weight:600;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)}
+.trade h4.mine{color:var(--sky-deep)}
+.pick{display:flex;flex-wrap:wrap;gap:5px}
+.pick button{font-size:11.5px;padding:5px 11px;border-radius:99px;color:var(--ink2);
+  background:rgba(255,255,255,.8);border:1px solid var(--gl-line-2)}
+.pick button:hover{border-color:var(--sky-edge)}
+.pick button.on{color:#fff;background:linear-gradient(180deg,#57A6E6,#2F86CE);border-color:#2B7EC4}
+
+/* 세그먼티드 토글 */
+.seg{display:flex;padding:3px;gap:3px;border-radius:99px;
+  background:rgba(255,255,255,.6);border:1px solid var(--gl-line)}
+.seg button{flex:1;padding:7px 10px;border-radius:99px;font-family:var(--f-lb);
+  font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink2);transition:background .14s,color .14s}
+.seg button:hover{color:var(--ink)}
+.seg button.on{color:#fff;background:linear-gradient(180deg,#57A6E6,#2F86CE);
+  box-shadow:0 2px 8px rgba(30,110,180,.28)}
+.rng{display:flex;align-items:center;gap:10px}
+.rng input[type=range]{flex:1;accent-color:var(--sky)}
+.rng .v{font-family:var(--f-num);font-size:12px;color:var(--ink2);width:38px;text-align:right}
+.chk{display:flex;gap:9px;align-items:center;font-size:12.5px;color:var(--ink2);cursor:pointer}
+.chk input{accent-color:var(--sky)}
+
+/* ══ 격납고 — 기체 선택 ════════════════════════════════════ */
+.bay{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:var(--s2)}
+.bayc{position:relative;padding:10px;border-radius:var(--r-md);text-align:left;
+  background:var(--gl-2);border:1px solid var(--gl-line);display:flex;flex-direction:column;gap:7px;
+  transition:border-color .14s,background .14s,transform .1s}
+.bayc:hover{border-color:var(--sky-edge);background:#fff}
+.bayc.on{border-color:var(--sky);background:var(--sky-mist);
+  box-shadow:0 0 0 3px rgba(62,150,220,.15)}
+.bayc canvas{width:100%;aspect-ratio:4/3;display:block;border-radius:var(--r-sm);
+  background:linear-gradient(170deg,#EDF6FE,#D9EBFA)}
+.bayc b{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.3}
+.bayc i{font-style:normal;font-size:10.5px;color:var(--ink3);line-height:1.4}
+.bayc .mine{position:absolute;top:6px;right:6px;font-family:var(--f-lb);font-size:9px;
+  letter-spacing:.1em;text-transform:uppercase;color:#fff;padding:2px 7px;border-radius:99px;
+  background:var(--sky-deep)}
+.drop{padding:var(--s5) var(--s4);border-radius:var(--r-md);text-align:center;
+  border:1.5px dashed var(--gl-line-2);background:rgba(255,255,255,.42);
+  color:var(--ink2);font-size:13px;transition:border-color .14s,background .14s}
+.drop.hot{border-color:var(--sky);background:var(--sky-mist)}
+.drop > b:first-child{display:block;font-weight:600;color:var(--ink);margin-bottom:4px;font-size:13.5px}
+.drop b{font-weight:600;color:var(--ink)}
+
+/* ══ 비행 화면 ═════════════════════════════════════════════ */
+#game{position:fixed;inset:0;background:#BCD8EE}
+#game.off{display:none}
+#gl,#hud{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{pointer-events:none}
+.ovl{position:absolute;pointer-events:none;font-family:var(--f-ui)}
+
+/* 비행 중 유리 칩 */
+.chip{background:rgba(255,255,255,.7);backdrop-filter:saturate(170%) blur(14px);
+  -webkit-backdrop-filter:saturate(170%) blur(14px);
+  border:1px solid rgba(255,255,255,.8);border-radius:var(--r-md);
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 6px 20px rgba(14,45,78,.14)}
+
+#radio{left:16px;bottom:132px;width:min(340px,42vw);display:flex;flex-direction:column;
+  gap:4px;justify-content:flex-end;max-height:190px;overflow:hidden}
+#radio .r{font-family:var(--f-kr);font-size:12.5px;line-height:1.45;padding:5px 11px;
+  border-radius:99px;align-self:flex-start;max-width:100%;
+  background:rgba(255,255,255,.72);backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.8);
+  box-shadow:0 3px 12px rgba(14,45,78,.12);color:var(--ink)}
+#radio .r b{font-family:var(--f-lb);letter-spacing:.05em;color:var(--sky-deep);font-weight:600}
+#radio .r.k b{color:var(--ink3)}
+
+#feed{right:16px;top:16px;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+#feed .f{display:flex;align-items:center;gap:8px;padding:6px 13px;border-radius:99px;
+  font-size:12px;background:rgba(255,255,255,.76);backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.82);
+  box-shadow:0 3px 14px rgba(14,45,78,.14)}
+#feed .f b{font-family:var(--f-lb);font-weight:600;letter-spacing:.05em}
+#feed .f .k{color:var(--good)} #feed .f .v{color:var(--bad)}
+#feed .f i{font-style:normal;color:var(--ink3)}
+
+#board{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+  background:rgba(160,196,226,.4);backdrop-filter:blur(8px)}
+#board .card{width:min(460px,90vw);border-radius:var(--r-lg);overflow:hidden;
+  background:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.92);
+  box-shadow:0 28px 70px rgba(18,62,105,.26)}
+#board h3{margin:0;padding:15px var(--s5);border-bottom:1px solid var(--gl-line);
+  font-family:var(--f-lb);font-size:11.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink2)}
+#board .rows{display:flex;flex-direction:column;padding:var(--s2)}
+#board .rw{display:flex;align-items:center;gap:11px;padding:10px 16px;font-size:13.5px;
+  border-radius:var(--r-sm)}
+#board .rw.me{background:var(--sky-mist)}
+#board .rw .n{flex:1;font-family:var(--f-ui);font-weight:600}
+#board .rw .v{font-family:var(--f-num);width:40px;text-align:right;color:var(--ink2)}
+
+#msg{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;
+  z-index:15;pointer-events:none}
+#msg .big{font-family:var(--f-ui);font-size:34px;font-weight:600;letter-spacing:-.015em;
+  color:var(--bad);text-shadow:0 2px 18px rgba(255,255,255,.9),0 1px 2px rgba(255,255,255,.9)}
+#msg .sub{font-family:var(--f-kr);font-size:14px;color:var(--ink);margin-top:5px;
+  text-shadow:0 1px 6px rgba(255,255,255,.95)}
+
+#tips{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
+  display:flex;gap:13px;padding:7px 16px;border-radius:99px;font-size:11px;
+  color:var(--ink2);letter-spacing:.02em;white-space:nowrap;
+  background:rgba(255,255,255,.66);backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.78);
+  box-shadow:0 3px 14px rgba(14,45,78,.12)}
+#tips b{color:var(--sky-deep);font-family:var(--f-num);font-weight:500}
+
+#chatin{position:absolute;left:16px;bottom:88px;width:min(360px,50vw);z-index:18;
+  display:flex;gap:var(--s2);align-items:center;pointer-events:auto;padding:6px 6px 6px 14px;
+  border-radius:99px;background:rgba(255,255,255,.86);backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 8px 26px rgba(14,45,78,.18)}
+#chatin span{font-family:var(--f-lb);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--sky-deep);flex:0 0 auto}
+#chatin input{flex:1;min-width:0;padding:7px 12px;border:none;background:transparent;
+  color:var(--ink);font-size:13px}
+#chatin input:focus{outline:none}
+
+/* 터치 조종 */
+#touch{position:absolute;inset:0;z-index:12;display:none}
+#touch.on{display:block}
+#stick{position:absolute;left:20px;bottom:20px;width:132px;height:132px;border-radius:50%;
+  pointer-events:auto;touch-action:none;background:rgba(255,255,255,.42);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.7);box-shadow:0 6px 20px rgba(14,45,78,.14)}
+#stick .k{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;
+  border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(214,235,251,.85));
+  border:1px solid rgba(255,255,255,.9);box-shadow:0 3px 10px rgba(14,45,78,.2)}
+.tbtn{position:absolute;pointer-events:auto;touch-action:none;user-select:none;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-lb);font-size:11px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink);
+  background:rgba(255,255,255,.72);backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.82);
+  box-shadow:0 4px 16px rgba(14,45,78,.15)}
+.tbtn.hit{color:#fff;background:linear-gradient(180deg,#57A6E6,#2F86CE);border-color:#2B7EC4}
+#tgun{right:20px;bottom:20px;width:88px;height:88px;border-radius:50%}
+#tmsl{right:118px;bottom:44px;width:64px;height:64px;border-radius:50%}
+#tup{right:24px;bottom:126px;width:80px;height:38px;border-radius:99px}
+#tdn{right:24px;bottom:172px;width:80px;height:38px;border-radius:99px}
+#tab2{right:118px;bottom:118px;width:64px;height:38px;border-radius:99px}
+
+/* ══ 반응형 ════════════════════════════════════════════════ */
+@media (max-width:1120px){
+  .grid{grid-template-columns:1fr;overflow-y:auto}
+  .col{min-height:auto}
+  #radio{display:none}
+}
+@media (max-width:640px){
+  .topbar{margin:var(--s2) var(--s2) 0;padding:10px var(--s3);gap:var(--s3);flex-wrap:wrap}
+  .brand b{font-size:15px}
+  .grid{padding:var(--s2);gap:var(--s2)}
+  .colbd{padding:var(--s3)}
+  .sqk{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s4)}
+  .sqk .big{font-size:36px}
+  .trade{grid-template-columns:1fr}
+  #tips{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* backdrop-filter 미지원 브라우저 대비 — 유리를 불투명 흰색으로 */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .topbar,.col,.sheet,.chip,#radio .r,#feed .f,#tips,#chatin,.tbtn,#board .card{
+    background:rgba(255,255,255,.95)}
+  .veil,#board{background:rgba(190,215,235,.86)}
+}
+</style>
+</head>
+<body>
+<!-- ══════════════ 작전실 ══════════════ -->
+<div id="ops">
+  <div class="topbar">
+    <div class="brand"><b>Rise Of Sky</b><span>SQUAWK &middot; AIR COMBAT</span></div>
+    <div class="stat"><span class="lbl">Credits</span><b id="tCred" class="num">0</b></div>
+    <div class="stat"><span class="lbl">Kills / Losses</span><b id="tKd" class="num">0 / 0</b></div>
+    <button class="link no" id="tLink" type="button"><i></i><span>Offline</span></button>
+  </div>
+
+  <div class="grid">
+    <!-- 좌: 파일럿 기록 + 격납고 -->
+    <section class="col">
+      <div class="colhd"><h2>Pilot Record</h2><div class="rule"></div></div>
+      <div class="colbd scroll">
+        <div class="dogtag">
+          <div class="cs">
+            <b id="dCall">—</b>
+            <button id="bRename" type="button">Change callsign</button>
+          </div>
+          <dl class="kv">
+            <dt>Sorties</dt><dd id="dSorties">0</dd>
+            <dt>Kills / Losses</dt><dd id="dKd">0 / 0</dd>
+            <dt>Accuracy</dt><dd id="dAcc">—</dd>
+            <dt>Best streak</dt><dd id="dStreak">0</dd>
+          </dl>
+        </div>
+
+        <div id="dJet"></div>
+        <div id="dCtrl"></div>
+
+        <div>
+          <div class="lbl" style="margin-bottom:8px">Loadout &middot; 3 slots</div>
+          <div class="slots" id="dSlots"></div>
+        </div>
+
+        <div>
+          <div class="lbl" style="margin-bottom:8px">Inventory</div>
+          <div class="parts" id="dBag"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 중: 편대 -->
+    <section class="col">
+      <div class="colhd"><h2>Flight</h2><div class="rule"></div>
+        <span class="lbl" id="netMode">P2P</span></div>
+      <div class="colbd scroll" id="flightPane"></div>
+    </section>
+
+    <!-- 우: 교신 + 거래 -->
+    <section class="col">
+      <div class="colhd"><h2>Comms</h2><div class="rule"></div>
+        <button class="btn sm" id="bTrade" type="button">Trade</button></div>
+      <div class="log scroll" id="opsLog"></div>
+      <div class="brevity" id="opsBrev"></div>
+      <div class="composer">
+        <input id="opsMsg" type="text" placeholder="Transmit on flight channel…" maxlength="180"
+               autocomplete="off">
+        <button id="bSend" type="button">Send</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ══════════════ 비행 ══════════════ -->
+<div id="game" class="off">
+  <canvas id="gl"></canvas>
+  <canvas id="hud"></canvas>
+
+  <div id="feed" class="ovl"></div>
+  <div id="radio" class="ovl"></div>
+  <div id="msg" class="ovl hide"><div class="big"></div><div class="sub"></div></div>
+  <div id="tips" class="ovl">
+    <span><b>W/S</b> Pitch</span><span><b>A/D</b> Roll</span><span><b>Q/E</b> Yaw</span>
+    <span><b>Shift/Ctrl</b> Throttle</span><span><b>R</b> Burner</span>
+    <span><b>Space</b> Guns</span><span><b>F</b> Missile</span><span><b>T</b> Radio</span>
+    <span><b>Tab</b> Score</span><span><b>C</b> View</span><span><b>Esc</b> Return</span>
+  </div>
+
+  <div id="chatin" class="hide"><span>Radio</span>
+    <input type="text" maxlength="120" autocomplete="off" placeholder="Message…"></div>
+
+  <div id="board" class="hide"><div class="card">
+    <h3>Scoreboard</h3><div class="rows" id="boardRows"></div></div></div>
+
+  <div id="touch">
+    <div id="stick"><div class="k"></div></div>
+    <button class="tbtn" id="tgun" type="button">Guns</button>
+    <button class="tbtn" id="tmsl" type="button">Msl</button>
+    <button class="tbtn" id="tup" type="button">Thr +</button>
+    <button class="tbtn" id="tdn" type="button">Thr &minus;</button>
+    <button class="tbtn" id="tab2" type="button">Burner</button>
+  </div>
+</div>
+
+<!-- ══════════════ 모달 ══════════════ -->
+<div id="modal" class="veil hide"><div class="sheet">
+  <header><h3 id="mTitle">—</h3><button class="x" id="mClose" type="button">✕</button></header>
+  <div class="body" id="mBody"></div>
+  <footer id="mFoot"></footer>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   스쿼크 편대전 — 초대제 3D 공중전
+   서버 없음: WebRTC(PeerJS) 스타 토폴로지. 호스트가 중계한다.
+   스쿼크 = 트랜스폰더 4자리 8진수(0–7). 실제 항공 관례대로
+   7500/7600/7700(비상 코드)은 배정하지 않는다.
+   ═════════════════════════════════════════════════════════════ */
+
+/* ── 부품 카탈로그 ── */
+const PARTS = {
+  "af.plate":{n:"Titanium Plating", c:"Airframe", t:1, v:180, e:"+25 hull",          d:{hp:25}},
+  "af.wing" :{n:"Canard Wing",      c:"Airframe", t:2, v:420, e:"+20% turn rate",    d:{turn:.20}},
+  "af.frame":{n:"Lightweight Frame",c:"Airframe", t:3, v:900, e:"+18% acceleration", d:{acc:.18}},
+  "en.cool" :{n:"Cooling Core",     c:"Engine",   t:1, v:200, e:"+60% burner recharge", d:{abr:.60}},
+  "en.ab"   :{n:"Afterburner Module",c:"Engine",  t:2, v:460, e:"+15% max thrust",   d:{thr:.15}},
+  "av.rdr"  :{n:"Wide-Scan Radar",  c:"Avionics", t:1, v:220, e:"+70% radar range",  d:{rdr:.70}},
+  "av.lead" :{n:"Lead Computing Sight", c:"Avionics", t:2, v:520, e:"Shows lead pipper", d:{lead:1}},
+  "av.ecm"  :{n:"ECM Jammer",       c:"Avionics", t:3, v:980, e:"45% missile defeat", d:{ecm:.45}},
+  "wp.gun"  :{n:"High-Rate Cannon", c:"Armament", t:2, v:440, e:"+35% rate of fire", d:{rof:.35}},
+  "wp.pod"  :{n:"Missile Pod",      c:"Armament", t:2, v:480, e:"+3 missiles",       d:{msl:3}}
+};
+const TIER = {1:"Standard", 2:"Depot", 3:"Prototype"};
+const SLOTS = 3;
+
+/* 실제 무선 약어 */
+const BREVITY = ["Tally ho","Fox two","Splash","Need cover","Hit, bugging out","Roger","Wilco","Negative"];
+
+const COLORS = ["#F0A93B","#63D6A4","#7FB6E0","#E85A4F","#C58BE0","#E0C860","#5FD0D8","#E88A5A"];
+
+/* ── 유틸 ── */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+const lerp  = (a,b,t) => a + (b-a)*t;
+const now   = () => performance.now();
+const rnd   = (a,b) => a + Math.random()*(b-a);
+const pick  = a => a[(Math.random()*a.length)|0];
+function esc(s){ return String(s).replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function el(tag, cls, html){ const e = document.createElement(tag);
+  if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+
+/* 스쿼크: 4자리, 각 자리 0–7. 비상 코드 제외. */
+const EMERG = new Set(["7500","7600","7700"]);
+function newSquawk(){
+  let s; do { s = ""; for (let i=0;i<4;i++) s += (Math.random()*8)|0; }
+  while (EMERG.has(s) || s === "0000");
+  return s;
+}
+const validSquawk = s => /^[0-7]{4}$/.test(s) && !EMERG.has(s);
+
+/* ── 파일럿 기록(로컬 저장) ── */
+const KEY = "squawk.pilot.v1";
+const DEFAULT_CALLS = ["VIPER","HAWK","RAZOR","GHOST","TALON","JESTER","MAVERICK",
+                       "COBRA","FALCON","SABRE","WIDOW","LANCE"];
+
+let P = load();
+
+/* 네트워크에서 나를 가리키는 값. 창(문서)마다 다르다 —
+   같은 브라우저의 두 창도 서로 다른 편대원으로 잡힌다. */
+const NETID = P.id + "-" + Math.random().toString(36).slice(2, 6);
+function load(){
+  let r = null;
+  try { r = JSON.parse(localStorage.getItem(KEY) || "null"); } catch(e){}
+  if (!r || typeof r !== "object") {
+    r = { id: "p" + Math.random().toString(36).slice(2,10),
+          call: pick(DEFAULT_CALLS) + "-" + (1+(Math.random()*9|0)),
+          cred: 1400, bag: { "af.plate":1, "av.rdr":1 }, eq: ["af.plate", null, null],
+          k:0, d:0, sorties:0, shots:0, hits:0, streak:0, color: pick(COLORS),
+          jet:"delta", custom:null,
+          ctrl:"key", sens:1, invertY:false };
+    save(r);
+  }
+  r.eq = (r.eq || []).slice(0, SLOTS);
+  while (r.eq.length < SLOTS) r.eq.push(null);
+  r.bag = r.bag || {};
+  r.jet = r.jet || "delta";
+  if (r.custom === undefined) r.custom = null;
+  r.ctrl = r.ctrl === "mouse" ? "mouse" : "key";
+  r.sens = typeof r.sens === "number" ? clamp(r.sens, .3, 3) : 1;
+  r.invertY = !!r.invertY;
+  return r;
+}
+function save(r){ try { localStorage.setItem(KEY, JSON.stringify(r || P)); } catch(e){} }
+
+/* 장착 부품에서 나오는 보정치 */
+function mods(){
+  const m = {hp:0,turn:0,acc:0,abr:0,thr:0,rdr:0,lead:0,ecm:0,rof:0,msl:0};
+  for (const id of P.eq) { const p = id && PARTS[id]; if (!p) continue;
+    for (const k in p.d) m[k] = (m[k]||0) + p.d[k]; }
+  return m;
+}
+
+/* ── 모달 ── */
+let modalOnClose = null;
+function openModal(title, bodyNode, footNodes, onClose){
+  $("#mTitle").textContent = title;
+  const b = $("#mBody"); b.innerHTML = ""; b.appendChild(bodyNode);
+  const f = $("#mFoot"); f.innerHTML = ""; (footNodes||[]).forEach(n => f.appendChild(n));
+  modalOnClose = onClose || null;
+  $("#modal").classList.remove("hide");
+}
+function closeModal(){
+  $("#modal").classList.add("hide");
+  if (modalOnClose) { const fn = modalOnClose; modalOnClose = null; fn(); }
+}
+$("#mClose").addEventListener("click", closeModal);
+$("#modal").addEventListener("mousedown", e => { if (e.target.id === "modal") closeModal(); });
+function mkBtn(label, cls, fn){ const b = el("button", "btn " + (cls||""), esc(label));
+  b.type = "button"; b.addEventListener("click", fn); return b; }
+
+/* ── 작전실: 파일럿 패널 ── */
+function renderPilot(){
+  $("#dCall").textContent    = P.call;
+  $("#tCred").textContent    = P.cred.toLocaleString("ko-KR");
+  $("#tKd").textContent      = P.k + " / " + P.d;
+  $("#dKd").textContent      = P.k + " / " + P.d;
+  $("#dSorties").textContent = P.sorties;
+  $("#dStreak").textContent  = P.streak;
+  $("#dAcc").textContent     = P.shots > 40 ? Math.round(P.hits/P.shots*100) + "%" : "—";
+
+  const jw = $("#dJet");
+  if (jw){
+    jw.innerHTML = "";
+    jw.appendChild(el("div","lbl","Airframe"));
+    jw.style.cssText = "display:flex;flex-direction:column;gap:8px";
+    const row = el("div","slot t2");
+    row.appendChild(el("div","t"));
+    const jd = P.jet === "custom"
+      ? { nameKo:(P.custom && P.custom.name) || "My airframe", note:"Imported model" }
+      : jetDef(P.jet);
+    row.appendChild(el("div","nm","<b>" + esc(jd.nameKo) + "</b><i>" + esc(jd.note || "") + "</i>"));
+    const gb = mkBtn("Hangar","sm", openHangar);
+    row.appendChild(gb);
+    jw.appendChild(row);
+  }
+
+  const cw = $("#dCtrl");
+  if (cw){
+    cw.innerHTML = "";
+    cw.style.cssText = "display:flex;flex-direction:column;gap:9px";
+    cw.appendChild(el("div","lbl","Controls"));
+    const seg = el("div","seg");
+    [["key","Keyboard"],["mouse","Mouse"]].forEach(([k,label]) => {
+      const b = el("button", P.ctrl === k ? "on" : "", label); b.type = "button";
+      b.addEventListener("click", () => {
+        P.ctrl = k; save(); renderPilot(); paintTips();
+        if (k !== "mouse" && document.pointerLockElement) document.exitPointerLock();
+      });
+      seg.appendChild(b);
+    });
+    cw.appendChild(seg);
+    if (P.ctrl === "mouse"){
+      const r = el("div","rng");
+      r.appendChild(el("span","lbl","Sens"));
+      const sr = el("input"); sr.type = "range"; sr.min = ".3"; sr.max = "3"; sr.step = ".1";
+      sr.value = String(P.sens); sr.setAttribute("aria-label","Mouse sensitivity");
+      const vv = el("span","v", P.sens.toFixed(1));
+      sr.addEventListener("input", () => {
+        P.sens = parseFloat(sr.value); vv.textContent = P.sens.toFixed(1); save();
+      });
+      r.appendChild(sr); r.appendChild(vv);
+      cw.appendChild(r);
+      const inv = el("label","chk");
+      const ic = el("input"); ic.type = "checkbox"; ic.checked = P.invertY;
+      ic.addEventListener("change", () => { P.invertY = ic.checked; save(); });
+      inv.appendChild(ic); inv.appendChild(el("span", null, "Invert pitch"));
+      cw.appendChild(inv);
+      cw.appendChild(el("div","note",
+        "Click the sky to capture the pointer. The stick holds where you leave it, " +
+        "like a real one — press <b>Z</b> to centre it. Left click fires, right click launches."));
+    } else {
+      cw.appendChild(el("div","note",
+        "W/S pitch, A/D roll, Q/E rudder. Shift and Ctrl work the throttle."));
+    }
+  }
+
+  const sl = $("#dSlots"); sl.innerHTML = "";
+  for (let i=0;i<SLOTS;i++){
+    const id = P.eq[i], p = id && PARTS[id];
+    const row = el("div", "slot " + (p ? "t"+p.t : "empty"));
+    row.appendChild(el("div","t"));
+    if (p){
+      row.appendChild(el("div","nm","<b>"+esc(p.n)+"</b><i>"+esc(p.e)+"</i>"));
+      const x = el("button","x","✕"); x.type="button"; x.title="Remove";
+      x.addEventListener("click", () => {
+        P.bag[id] = (P.bag[id]||0) + 1; P.eq[i] = null; save(); renderPilot();
+      });
+      row.appendChild(x);
+    } else {
+      row.appendChild(el("div","nm","<b style='color:var(--ink3);font-weight:400'>Empty slot "
+        + (i+1) + "</b>"));
+    }
+    sl.appendChild(row);
+  }
+
+  const bag = $("#dBag"); bag.innerHTML = "";
+  const owned = Object.keys(P.bag).filter(k => P.bag[k] > 0 && PARTS[k]);
+  if (!owned.length){
+    bag.appendChild(el("div","empty","<b>Nothing stowed</b>Kills earn credits. Trade with your flight to get parts."));
+  } else {
+    owned.sort((a,b) => PARTS[b].t - PARTS[a].t || PARTS[a].n.localeCompare(PARTS[b].n));
+    for (const id of owned){
+      const p = PARTS[id];
+      const row = el("div","part t"+p.t);
+      row.appendChild(el("div","t"));
+      row.appendChild(el("div","nm","<b>"+esc(p.n)+"</b><i>"+TIER[p.t]+" · "+esc(p.e)+"</i>"));
+      row.appendChild(el("div","qty","×"+P.bag[id]));
+      const free = P.eq.indexOf(null);
+      const b = el("button","act", free < 0 ? "No slot" : "Fit"); b.type="button";
+      if (free < 0) b.disabled = true;
+      else b.addEventListener("click", () => {
+        const i = P.eq.indexOf(null); if (i < 0) return;
+        P.eq[i] = id; P.bag[id]--; if (!P.bag[id]) delete P.bag[id];
+        save(); renderPilot();
+      });
+      row.appendChild(b);
+      bag.appendChild(row);
+    }
+  }
+}
+
+/* 콜사인 변경 */
+$("#bRename").addEventListener("click", () => {
+  const wrap = el("div","field");
+  wrap.appendChild(el("div","note",
+    "This is what the flight calls you on the radio. Keep it under 12 characters."));
+  const inp = el("input","inp"); inp.value = P.call; inp.maxLength = 14;
+  wrap.appendChild(inp);
+  const commit = () => {
+    const v = inp.value.trim().toUpperCase().replace(/\s+/g," ").slice(0,14);
+    if (v){ P.call = v; save(); renderPilot(); Net.announce(); }
+    closeModal();
+  };
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") commit(); });
+  openModal("Change callsign", wrap, [mkBtn("Cancel","",closeModal), mkBtn("Confirm","pri",commit)]);
+  setTimeout(() => { inp.focus(); inp.select(); }, 30);
+});
+</script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   NET — PeerJS 스타 토폴로지
+   호스트가 브로커에 스쿼크로 자리를 잡고, 게스트는 그 스쿼크로 붙는다.
+   호스트는 모든 기체 상태를 한 묶음(snap)으로 재방송한다.
+   ═════════════════════════════════════════════════════════════ */
+const ICE = { iceServers:[
+  {urls:"stun:stun.l.google.com:19302"},
+  {urls:"stun:stun1.l.google.com:19302"},
+  {urls:"stun:global.stun.twilio.com:3478"}
+]};
+const PID_PREFIX = "sqk4x-";
+
+const Net = {
+  mode:"off",        // off | host | guest
+  status:"idle",     // idle | dialing | wait | up | down
+  peer:null, conns:new Map(), hostConn:null,
+  squawk:null, hostPid:null,
+  roster:new Map(),  // pid -> {pid,call,color,host}
+  invited:[],        // 초대 콜사인 (호스트가 관리)
+  openToAll:false,
+  requests:[],       // {pid,call,conn} 승인 대기
+  live:false,
+  states:new Map(),  // pid -> 최근 기체 상태
+  handlers:{},
+
+  on(t,fn){ (this.handlers[t] = this.handlers[t] || []).push(fn); },
+  fire(t,d){ (this.handlers[t]||[]).forEach(f => { try{ f(d); }catch(e){ console.error(e); } }); },
+
+  get up(){ return this.status === "up"; },
+  get isHost(){ return this.mode === "host"; },
+
+  me(){ return { pid:NETID, call:P.call, color:P.color, host:this.isHost,
+                 jet:P.jet, jetCfg:(P.custom && P.custom.shared) ? P.custom : null }; },
+  rosterList(){ return [...this.roster.values()]
+      .map(r => ({pid:r.pid, call:r.call, color:r.color, host:r.host,
+                  jet:r.jet, jetCfg:r.jetCfg})); },
+
+  /* ── 개설 ── */
+  async host(){
+    this.teardown();
+    this.mode = "host"; this.status = "dialing";
+    sysLog("Requesting a slot on the broker…"); paintLink(); renderFlight();
+    for (let attempt = 0; attempt < 6; attempt++){
+      const sq = newSquawk();
+      const ok = await this._claim(sq);
+      if (ok){
+        this.squawk = sq; this.hostPid = NETID; this.status = "up";
+        this.roster.set(NETID, Object.assign(this.me(), {host:true}));
+        this.invited = []; this.openToAll = false; this.requests = [];
+        sysLog("Squawk " + sq + " assigned. Only pilots who know it can join.");
+        paintLink(); renderFlight(); return true;
+      }
+    }
+    this.status = "down"; this.mode = "off";
+    sysLog("Could not claim a slot. Try again in a moment.");
+    paintLink(); renderFlight(); return false;
+  },
+
+  _claim(sq){
+    return new Promise(res => {
+      let done = false;
+      const p = new Peer(PID_PREFIX + sq, { debug:0, config:ICE });
+      const finish = v => { if (done) return; done = true; res(v); };
+      const timer = setTimeout(() => { try{p.destroy();}catch(e){} finish(false); }, 12000);
+      p.on("open", () => { clearTimeout(timer); this.peer = p; this._wireHost(p); finish(true); });
+      p.on("error", () => { clearTimeout(timer); try{p.destroy();}catch(e){} finish(false); });
+    });
+  },
+
+  _wireHost(p){
+    p.on("connection", c => {
+      c.on("data", d => this._hostRecv(c, d));
+      c.on("close", () => this._dropGuest(c));
+      c.on("error", () => this._dropGuest(c));
+    });
+    p.on("disconnected", () => { try{ p.reconnect(); }catch(e){} });
+    p.on("close", () => { this.status = "down"; paintLink(); });
+    p.on("error", () => {});
+  },
+
+  _hostRecv(c, m){
+    if (!m || typeof m !== "object") return;
+    if (m.t === "hello"){
+      const call = (String(m.call||"").slice(0,14).toUpperCase()) || "UNKNOWN";
+      const pid  = String(m.pid||"").slice(0,24);
+      if (!pid) return;
+      /* 이미 아는 pid 라도, '같은 연결'에서 온 것일 때만 갱신으로 본다.
+         다른 연결이면 그건 새 참가자다 — 갱신으로 삼키면 입장이 조용히 막힌다. */
+      if (this.roster.has(pid) && this.conns.get(pid) === c){
+        const ex = this.roster.get(pid);
+        ex.call = call; ex.jet = m.jet || "delta"; ex.jetCfg = m.jetCfg || null;
+        this._bcast({t:"roster", roster:this.rosterList()});
+        renderFlight(); return;
+      }
+      const allowed = this.openToAll || this.invited.includes(call);
+      if (!allowed){
+        const ex = this.requests.find(r => r.pid === pid);
+        if (ex){ ex.conn = c; ex.jet = m.jet; ex.jetCfg = m.jetCfg; ex.color = m.color; }
+        else this.requests.push({pid, call, conn:c, color:m.color, jet:m.jet, jetCfg:m.jetCfg});
+        try{ c.send({t:"wait"}); }catch(e){}
+        sysLog(call + " is requesting to join."); renderFlight(); return;
+      }
+      this._admit(c, pid, call, m.color, m.jet, m.jetCfg); return;
+    }
+    const pid = (c.metadata && c.metadata.pid) || this._pidOf(c);
+    if (!pid) return;
+    this._route(pid, m);
+  },
+
+  _admit(c, pid, call, color, jet, jetCfg){
+    c.metadata = Object.assign({}, c.metadata, {pid});
+    this.conns.set(pid, c);
+    this.roster.set(pid, {pid, call, color: color || "#7FB6E0", host:false,
+                          jet: jet || "delta", jetCfg: jetCfg || null});
+    try{ c.send({t:"welcome", sq:this.squawk, hostPid:NETID, live:this.live,
+                 roster:this.rosterList()}); }catch(e){}
+    this._bcast({t:"roster", roster:this.rosterList()});
+    sysLog(call + " joined the flight.");
+    Chat.push("ops", "", call + " on station", true);
+    renderFlight();
+  },
+
+  approve(pid){
+    const i = this.requests.findIndex(r => r.pid === pid); if (i < 0) return;
+    const r = this.requests.splice(i,1)[0];
+    if (!this.invited.includes(r.call)) this.invited.push(r.call);
+    if (r.conn) this._admit(r.conn, r.pid, r.call, r.color, r.jet, r.jetCfg);
+    renderFlight();
+  },
+  deny(pid){
+    const i = this.requests.findIndex(r => r.pid === pid); if (i < 0) return;
+    const r = this.requests.splice(i,1)[0];
+    try{ r.conn && r.conn.send({t:"deny", why:"The host declined your request."}); }catch(e){}
+    setTimeout(() => { try{ r.conn && r.conn.close(); }catch(e){} }, 400);
+    renderFlight();
+  },
+
+  _pidOf(c){ for (const [k,v] of this.conns) if (v === c) return k; return null; },
+  _dropGuest(c){
+    const pid = this._pidOf(c); if (!pid) return;
+    const r = this.roster.get(pid);
+    this.conns.delete(pid); this.roster.delete(pid); this.states.delete(pid);
+    if (r){ sysLog(r.call + " left the flight."); Chat.push("ops","", r.call + " off station", true); }
+    this._bcast({t:"roster", roster:this.rosterList()});
+    renderFlight();
+  },
+
+  _bcast(m, except){
+    for (const [pid,c] of this.conns){
+      if (pid === except) continue;
+      if (c.open){ try{ c.send(m); }catch(e){} }
+    }
+  },
+
+  /* ── 참가 ── */
+  join(sq){
+    if (!validSquawk(sq)){
+      sysLog("A squawk is four digits, each 0–7. 7500/7600/7700 are real emergency codes and are never issued.");
+      return;
+    }
+    this.teardown();
+    this.mode = "guest"; this.status = "dialing"; this.squawk = sq;
+    sysLog("Dialling squawk " + sq + "…"); paintLink(); renderFlight();
+
+    const p = new Peer({ debug:0, config:ICE });
+    this.peer = p;
+    const fail = why => { this.status = "down"; this.mode = "off";
+      sysLog(why); paintLink(); renderFlight(); };
+    const t = setTimeout(() => {
+      if (this.status === "dialing")
+        fail("No answer. Check the squawk, and that the host still has the page open.");
+    }, 18000);
+
+    p.on("open", () => {
+      const c = p.connect(PID_PREFIX + sq, { reliable:true, serialization:"json" });
+      this.hostConn = c;
+      c.on("open", () => { try{ c.send(Object.assign({t:"hello"}, Net.me())); }catch(e){} });
+      c.on("data", m => this._guestRecv(m, t, fail));
+      c.on("close", () => {
+        clearTimeout(t);
+        if (this.mode === "guest"){
+          sysLog("Lost the host. The flight has broken up.");
+          if (Game.running) endSortie();
+          this.teardown(); paintLink(); renderFlight();
+        }
+      });
+      c.on("error", () => {});
+    });
+    p.on("error", err => {
+      clearTimeout(t);
+      if (err && err.type === "peer-unavailable") fail("No flight is open on that squawk.");
+      else if (this.status !== "up") fail("Connection failed: " + ((err && err.type) || "unknown"));
+    });
+    p.on("disconnected", () => { try{ p.reconnect(); }catch(e){} });
+  },
+
+  _guestRecv(m, t, fail){
+    if (!m || typeof m !== "object") return;
+    if (m.t === "wait"){
+      clearTimeout(t); this.status = "wait";
+      sysLog("You are not on the invite list. Waiting for the host to approve…");
+      paintLink(); renderFlight(); return;
+    }
+    if (m.t === "deny"){
+      clearTimeout(t); sysLog(m.why || "Your request was declined.");
+      this.teardown(); paintLink(); renderFlight(); return;
+    }
+    if (m.t === "welcome"){
+      clearTimeout(t); this.status = "up"; this.hostPid = m.hostPid;
+      this.roster.clear();
+      (m.roster||[]).forEach(r => this.roster.set(r.pid, r));
+      this.roster.set(NETID, Object.assign(this.me(), {host:false}));
+      sysLog("Joined the flight on squawk " + this.squawk + ".");
+      paintLink(); renderFlight();
+      if (m.live && !Game.running) startSortie(false);
+      return;
+    }
+    if (m.t === "roster"){
+      const mine = this.roster.get(NETID);
+      this.roster.clear();
+      (m.roster||[]).forEach(r => this.roster.set(r.pid, r));
+      if (!this.roster.has(NETID) && mine) this.roster.set(NETID, mine);
+      renderFlight(); return;
+    }
+    this._route(m.from || null, m);
+  },
+
+  /* ── 라우팅 ── */
+  _route(fromPid, m){
+    switch (m.t){
+      case "snap":
+        (m.l||[]).forEach(s => {
+          if (s.pid === NETID) return;
+          s.at = now(); this.states.set(s.pid, s);
+        });
+        break;
+      case "pres":
+        if (this.isHost && fromPid){ m.pid = fromPid; m.at = now(); this.states.set(fromPid, m); }
+        break;
+      case "chat":
+        this.fire("chat", m);
+        if (this.isHost) this._bcast(m, fromPid);
+        break;
+      case "msl":
+        this.fire("msl", m);
+        if (this.isHost) this._bcast(m, fromPid);
+        break;
+      case "hit":
+        if (m.to === NETID) this.fire("hit", m);
+        if (this.isHost) this._bcast(m, fromPid);
+        break;
+      case "down":
+        this.fire("down", m);
+        if (this.isHost) this._bcast(m, fromPid);
+        break;
+      case "trade":
+        this.fire("trade", m);
+        if (this.isHost) this._bcast(m, fromPid);
+        break;
+      case "live":
+        this.live = !!m.v;
+        if (this.isHost) this._bcast(m, fromPid);
+        else if (m.v && !Game.running) startSortie(false);
+        break;
+    }
+  },
+
+  /* ── 송신 ── */
+  send(m){
+    if (!m.from) m.from = NETID;
+    if (this.isHost) this._bcast(m);
+    else if (this.hostConn && this.hostConn.open){ try{ this.hostConn.send(m); }catch(e){} }
+  },
+
+  /* 호스트: 전원 상태를 한 묶음으로 재방송 */
+  pumpSnap(mine){
+    if (!this.isHost) return;
+    this.states.set(NETID, Object.assign({pid:NETID}, mine, {at:now()}));
+    const l = [], tnow = now();
+    for (const [pid,s] of this.states){
+      if (pid !== NETID && tnow - s.at > 8000) continue;
+      l.push({pid, p:s.p, q:s.q, v:s.v, sp:s.sp, hp:s.hp, st:s.st,
+              fr:s.fr, ab:s.ab, k:s.k, d:s.d});
+    }
+    this._bcast({t:"snap", l});
+  },
+  pushPres(mine){
+    if (this.isHost) return;
+    if (this.hostConn && this.hostConn.open){
+      try{ this.hostConn.send(Object.assign({t:"pres"}, mine)); }catch(e){}
+    }
+  },
+
+  announce(){
+    if (!this.up) return;
+    const r = this.roster.get(NETID);
+    if (r) Object.assign(r, this.me(), {host: r.host});
+    if (this.isHost) this._bcast({t:"roster", roster:this.rosterList()});
+    else if (this.hostConn && this.hostConn.open){
+      try{ this.hostConn.send(Object.assign({t:"hello"}, this.me())); }catch(e){}
+    }
+    renderFlight();
+  },
+
+  setLive(v){ this.live = !!v; if (this.isHost) this._bcast({t:"live", v:this.live}); },
+
+  leaveFlight(){
+    const wasHost = this.isHost;
+    this.teardown();
+    sysLog(wasHost ? "Flight disbanded." : "You left the flight.");
+    paintLink(); renderFlight();
+  },
+
+  teardown(){
+    try{ this.conns.forEach(c => c.close()); }catch(e){}
+    try{ this.hostConn && this.hostConn.close(); }catch(e){}
+    try{ this.peer && this.peer.destroy(); }catch(e){}
+    this.conns.clear(); this.roster.clear(); this.states.clear();
+    this.hostConn = null; this.peer = null; this.requests = [];
+    this.mode = "off"; this.status = "idle"; this.squawk = null;
+    this.hostPid = null; this.live = false; this.invited = []; this.openToAll = false;
+  }
+};
+
+function paintLink(){
+  const b = $("#tLink"), s = b.querySelector("span");
+  b.className = "link " + (Net.up ? "on" : "no");
+  s.textContent = Net.up && Net.mode === "host"  ? "Host · " + Net.squawk
+                : Net.up && Net.mode === "guest" ? "Flight · " + Net.squawk
+                : Net.status === "dialing" ? "Connecting…"
+                : Net.status === "wait"    ? "Awaiting approval"
+                : "Offline";
+  $("#netMode").textContent = Net.up ? Net.roster.size + " connected" : "Peer-to-peer";
+}
+$("#tLink").addEventListener("click", () => { if (Net.up || Net.status === "wait") Net.leaveFlight(); });
+</script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   작전실 — 편대 개설/참가, 교신, 거래
+   ═════════════════════════════════════════════════════════════ */
+
+/* ── 교신 ── */
+const Chat = {
+  lines: [],
+  push(ch, from, text, sys){
+    const line = { from, text, sys: !!sys, at: Date.now() };
+    this.lines.push(line);
+    if (this.lines.length > 160) this.lines.shift();
+    this.render(); Radio.show(line);
+  },
+  render(){
+    const box = $("#opsLog");
+    const stick = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+    box.innerHTML = "";
+    for (const l of this.lines.slice(-90)){
+      const d = el("div", "msg" + (l.sys ? " sys" : ""));
+      d.appendChild(el("span", "from", l.sys ? "◈" : esc(l.from)));
+      d.appendChild(el("span", "txt", esc(l.text)));
+      box.appendChild(d);
+    }
+    if (stick) box.scrollTop = box.scrollHeight;
+  },
+  send(text){
+    text = String(text||"").trim().slice(0,180);
+    if (!text) return;
+    this.push("ops", P.call, text, false);
+    if (Net.up) Net.send({t:"chat", call:P.call, text});
+  }
+};
+function sysLog(t){ Chat.push("ops", "", t, true); }
+
+/* 비행 중 무전 오버레이 */
+const Radio = {
+  show(l){
+    const box = $("#radio"); if (!box) return;
+    const d = el("div", "r" + (l.sys ? " k" : ""));
+    d.appendChild(el("b", null, (l.sys ? "◈ " : esc(l.from) + " ")));
+    d.appendChild(el("span", null, esc(l.text)));
+    box.appendChild(d);
+    while (box.children.length > 7) box.removeChild(box.firstChild);
+    setTimeout(() => { if (d.parentNode) d.parentNode.removeChild(d); }, 14000);
+  }
+};
+
+$("#bSend").addEventListener("click", () => {
+  const i = $("#opsMsg"); Chat.send(i.value); i.value = "";
+});
+$("#opsMsg").addEventListener("keydown", e => {
+  if (e.key === "Enter"){ Chat.send(e.target.value); e.target.value = ""; }
+});
+(function(){
+  const b = $("#opsBrev");
+  BREVITY.forEach(w => {
+    const x = el("button", null, esc(w)); x.type = "button";
+    x.addEventListener("click", () => Chat.send(w));
+    b.appendChild(x);
+  });
+})();
+
+/* ── 연결 진단 ──────────────────────────────────────────────
+   같은 PC 두 탭은 루프백이라 아무것도 증명하지 못한다. 진짜로 확인해야
+   하는 건 두 가지다: 브로커(중개 서버)에 닿는가, 그리고 STUN 이 내
+   공인 주소를 되돌려 주는가. 후자가 없으면 다른 네트워크의 친구와는
+   절대 연결되지 않는다. */
+const NetCheck = {
+  state:"idle",      // idle | running | ready | local | blocked
+  detail:"",
+  broker:null, srflx:null, relay:null,
+
+  async run(){
+    if (this.state === "running") return;
+    this.state = "running"; this.detail = "Testing…";
+    this.broker = this.srflx = this.relay = null;
+    renderFlight();
+    try {
+      const [b, ice] = await Promise.all([this.pingBroker(), this.gatherIce()]);
+      this.broker = b;
+      this.srflx = ice.srflx; this.relay = ice.relay;
+      if (!b){
+        this.state = "blocked";
+        this.detail = "Cannot reach the matchmaking broker. A firewall or proxy is blocking it.";
+      } else if (ice.srflx || ice.relay){
+        this.state = "ready";
+        this.detail = "Broker reachable and your public address resolves. " +
+                      "Friends on other networks should be able to connect.";
+      } else {
+        this.state = "local";
+        this.detail = "Broker is reachable, but STUN returned no public address — " +
+                      "this network hides you behind a strict NAT. Pilots on the same " +
+                      "network may connect; pilots elsewhere probably will not.";
+      }
+    } catch(e){
+      this.state = "blocked";
+      this.detail = "Network check failed: " + (e && e.message ? e.message : "unknown");
+    }
+    renderFlight();
+  },
+
+  /* 브로커에 실제로 자리를 잡아 본다 */
+  pingBroker(){
+    return new Promise(res => {
+      if (!window.Peer) return res(false);
+      let done = false;
+      const fin = v => { if (done) return; done = true; res(v); };
+      let p;
+      try { p = new Peer({ debug:0, config:ICE }); }
+      catch(e){ return fin(false); }
+      const t = setTimeout(() => { try{ p.destroy(); }catch(e){} fin(false); }, 9000);
+      p.on("open", () => { clearTimeout(t); try{ p.destroy(); }catch(e){} fin(true); });
+      p.on("error", () => { clearTimeout(t); try{ p.destroy(); }catch(e){} fin(false); });
+    });
+  },
+
+  /* STUN 이 공인 주소(srflx)를 주는지 본다 — 이게 핵심이다 */
+  gatherIce(){
+    return new Promise(res => {
+      let srflx = false, relay = false, done = false;
+      const fin = () => { if (done) return; done = true;
+        try{ pc.close(); }catch(e){} res({srflx, relay}); };
+      let pc;
+      try { pc = new RTCPeerConnection(ICE); }
+      catch(e){ return res({srflx:false, relay:false}); }
+      const t = setTimeout(fin, 8000);
+      pc.onicecandidate = e => {
+        if (!e.candidate){ clearTimeout(t); return fin(); }
+        const c = e.candidate.candidate || "";
+        if (c.indexOf(" typ srflx") >= 0) srflx = true;
+        if (c.indexOf(" typ relay") >= 0) relay = true;
+        if (srflx && relay){ clearTimeout(t); fin(); }
+      };
+      try {
+        pc.createDataChannel("probe");
+        pc.createOffer().then(o => pc.setLocalDescription(o)).catch(fin);
+      } catch(e){ clearTimeout(t); fin(); }
+    });
+  }
+};
+
+/* ── 편대 패널 ─────────────────────────────────────────────── */
+function sectionHead(title, hint){
+  const h = el("div");
+  h.style.cssText = "display:flex;align-items:baseline;gap:10px;margin-top:4px";
+  h.appendChild(el("div","lbl", esc(title)));
+  const rule = el("div");
+  rule.style.cssText = "flex:1;height:1px;background:var(--gl-line)";
+  h.appendChild(rule);
+  if (hint) h.appendChild(el("span","lbl", esc(hint)));
+  return h;
+}
+
+function netCheckStrip(){
+  const map = {
+    idle:    { c:"var(--ink3)",   t:"Not checked",   d:"Run a check before you invite anyone." },
+    running: { c:"var(--sky)",    t:"Checking…",     d:"Contacting the broker and a STUN server." },
+    ready:   { c:"var(--good)",   t:"Ready",         d:NetCheck.detail },
+    local:   { c:"var(--caution)",t:"Local only",    d:NetCheck.detail },
+    blocked: { c:"var(--bad)",    t:"Blocked",       d:NetCheck.detail }
+  };
+  const m = map[NetCheck.state] || map.idle;
+  const w = el("div","brief");
+  const row = el("div");
+  row.style.cssText = "display:flex;align-items:center;gap:10px";
+  const dot = el("span");
+  dot.style.cssText = "width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:" + m.c +
+                      ";box-shadow:0 0 0 3px " + m.c + "33";
+  row.appendChild(dot);
+  const nm = el("div");
+  nm.style.cssText = "flex:1;min-width:0";
+  nm.appendChild(el("div", null, "<b style='font-size:13.5px'>Connectivity — " + esc(m.t) + "</b>"));
+  row.appendChild(nm);
+  const btn = mkBtn(NetCheck.state === "idle" ? "Run check" : "Re-check", "sm", () => NetCheck.run());
+  if (NetCheck.state === "running") btn.disabled = true;
+  row.appendChild(btn);
+  w.appendChild(row);
+  w.appendChild(el("div","note", esc(m.d)));
+  if (NetCheck.state === "local" || NetCheck.state === "blocked"){
+    w.appendChild(el("div","warn",
+      "Fix: add a free TURN relay to the <code>ICE</code> list near the top of this file. " +
+      "Without one, browsers behind strict NAT cannot reach each other directly."));
+  }
+  return w;
+}
+
+function renderFlight(){
+  const pane = $("#flightPane");
+  pane.innerHTML = "";
+
+  /* 접속 중 / 승인 대기 */
+  if (Net.status === "dialing" || Net.status === "wait"){
+    const c = el("div","brief");
+    c.appendChild(el("div","lbl", Net.status === "wait" ? "Awaiting approval" : "Connecting"));
+    c.appendChild(el("div","note", Net.status === "wait"
+      ? "You are not on the invite list. As soon as the host adds <b>" + esc(P.call) +
+        "</b>, you will drop straight in."
+      : "Looking for the host on squawk <code>" + esc(Net.squawk || "") + "</code>."));
+    c.appendChild(mkBtn("Cancel","", () => Net.leaveFlight()));
+    pane.appendChild(c);
+    return;
+  }
+
+  /* ── 편대에 들어가 있지 않을 때 ── */
+  if (!Net.up){
+    /* 단독 */
+    pane.appendChild(sectionHead("Solo", "no connection needed"));
+    const solo = el("div","brief");
+    solo.appendChild(el("div","note",
+      "Fly against training drones on your own. Learn the aircraft, earn credits toward parts. " +
+      "Nothing leaves your machine."));
+    solo.appendChild(mkBtn("Launch solo sortie","pri", () => startSortie(true)));
+    pane.appendChild(solo);
+
+    /* 멀티플레이 */
+    pane.appendChild(sectionHead("Multiplayer", "browser to browser"));
+    pane.appendChild(netCheckStrip());
+
+    const mk = el("div","brief");
+    mk.appendChild(el("div","lbl","Host a flight"));
+    mk.appendChild(el("div","note",
+      "You are assigned a <b>squawk</b> — four digits, each 0–7, exactly like a real " +
+      "transponder code. Only pilots who know it can reach you, and anyone not on your " +
+      "invite list still needs your approval."));
+    mk.appendChild(mkBtn("Open a flight","", () => Net.host()));
+    pane.appendChild(mk);
+
+    const jn = el("div","brief");
+    jn.appendChild(el("div","lbl","Join a flight"));
+    const inp = el("input","inp code");
+    inp.maxLength = 4; inp.inputMode = "numeric";
+    inp.placeholder = "0000"; inp.setAttribute("aria-label","Squawk");
+    const go = mkBtn("Connect","pri", () => Net.join(inp.value));
+    go.classList.add("wide"); go.disabled = true;
+    inp.addEventListener("input", () => {
+      inp.value = inp.value.replace(/[^0-7]/g, "").slice(0, 4);
+      go.disabled = inp.value.length !== 4;
+    });
+    inp.addEventListener("keydown", e => { if (e.key === "Enter" && !go.disabled) Net.join(inp.value); });
+    jn.appendChild(inp); jn.appendChild(go);
+    jn.appendChild(el("div","note",
+      "Enter the squawk a friend gave you. 7500, 7600 and 7700 are real emergency codes " +
+      "and are never issued here."));
+    pane.appendChild(jn);
+
+    pane.appendChild(el("div","warn",
+      "Peers connect directly to each other over WebRTC — there is no game server. " +
+      "The host's browser relays the flight, so if the host closes the page the flight ends."));
+    return;
+  }
+
+  /* ── 편대 안 ── */
+  const sq = el("div","sqk");
+  sq.appendChild(el("div","big num", esc(Net.squawk)));
+  const meta = el("div","meta");
+  meta.appendChild(el("div","lbl","Squawk"));
+  meta.appendChild(el("p", null, Net.isHost
+    ? "Send this to your friends. They need the link and the squawk."
+    : "Host: " + esc((Net.roster.get(Net.hostPid) || {}).call || "—")));
+  sq.appendChild(meta);
+  if (Net.isHost){
+    const cp = mkBtn("Copy link","sm", async () => {
+      const txt = location.href.split("#")[0] + "#" + Net.squawk;
+      try { await navigator.clipboard.writeText(txt); cp.textContent = "Copied"; }
+      catch(e){ cp.textContent = "Copy failed"; }
+      setTimeout(() => cp.textContent = "Copy link", 1700);
+    });
+    sq.appendChild(cp);
+  }
+  pane.appendChild(sq);
+
+  /* 승인 대기 요청 (호스트) */
+  if (Net.isHost && Net.requests.length){
+    const w = el("div","brief");
+    w.appendChild(el("div","lbl", Net.requests.length + " request" +
+      (Net.requests.length > 1 ? "s" : "") + " to join"));
+    Net.requests.forEach(r => {
+      const row = el("div","req");
+      row.appendChild(el("div","who", esc(r.call)));
+      row.appendChild(mkBtn("Decline","sm dgr", () => Net.deny(r.pid)));
+      row.appendChild(mkBtn("Admit","sm pri", () => Net.approve(r.pid)));
+      w.appendChild(row);
+    });
+    pane.appendChild(w);
+  }
+
+  /* 명단 */
+  const rl = el("div");
+  rl.style.cssText = "display:flex;flex-direction:column;gap:9px";
+  rl.appendChild(el("div","lbl", "Flight · " + Net.roster.size +
+    (Net.roster.size === 1 ? " aircraft" : " aircraft")));
+  const rs = el("div","roster");
+  [...Net.roster.values()]
+    .sort((a, b) => (b.host ? 1 : 0) - (a.host ? 1 : 0) || a.call.localeCompare(b.call))
+    .forEach(r => {
+      const row = el("div","pl");
+      const dot = el("span","dot"); dot.style.color = r.color || "#7FB6E0";
+      row.appendChild(dot);
+      const st = Net.states.get(r.pid);
+      row.appendChild(el("div","who","<b>" + esc(r.call) + "</b><i>" +
+        (st ? (st.st === "down" ? "Down" : "Airborne") : "Standing by") + "</i>"));
+      if (st) row.appendChild(el("div","kd","<b>" + (st.k || 0) + "</b> / " + (st.d || 0)));
+      if (r.host) row.appendChild(el("span","tag host","Host"));
+      if (r.pid === NETID) row.appendChild(el("span","tag you","You"));
+      else row.appendChild(mkBtn("Trade","sm", () => openTrade(r.pid)));
+      rs.appendChild(row);
+    });
+  rl.appendChild(rs);
+  pane.appendChild(rl);
+
+  /* 초대 명단 (호스트) */
+  if (Net.isHost){
+    const iv = el("div","brief");
+    iv.appendChild(el("div","lbl","Invite list"));
+    iv.appendChild(el("div","note",
+      "Callsigns listed here come straight in. Leave it empty and you approve every " +
+      "arrival by hand."));
+    const chips = el("div","pick");
+    Net.invited.forEach(c => {
+      const b = el("button", "on", esc(c) + " ✕"); b.type = "button";
+      b.addEventListener("click", () => {
+        Net.invited = Net.invited.filter(x => x !== c); renderFlight();
+      });
+      chips.appendChild(b);
+    });
+    if (!Net.invited.length) chips.appendChild(el("span","note","(empty)"));
+    iv.appendChild(chips);
+    const row = el("div"); row.style.cssText = "display:flex;gap:8px";
+    const inp = el("input","inp"); inp.placeholder = "Callsign"; inp.maxLength = 14;
+    const add = () => {
+      const v = inp.value.trim().toUpperCase(); if (!v) return;
+      if (!Net.invited.includes(v)) Net.invited.push(v);
+      const pend = Net.requests.find(r => r.call === v);
+      if (pend) Net.approve(pend.pid);
+      inp.value = ""; renderFlight();
+    };
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") add(); });
+    row.appendChild(inp); row.appendChild(mkBtn("Add","", add));
+    iv.appendChild(row);
+
+    const oa = el("label");
+    oa.style.cssText = "display:flex;gap:9px;align-items:center;font-size:13px;" +
+                       "color:var(--ink2);cursor:pointer";
+    const cb = el("input"); cb.type = "checkbox"; cb.checked = Net.openToAll;
+    cb.addEventListener("change", () => { Net.openToAll = cb.checked; renderFlight(); });
+    oa.appendChild(cb);
+    oa.appendChild(el("span", null, "Admit anyone who knows the squawk, without approval"));
+    iv.appendChild(oa);
+    pane.appendChild(iv);
+  }
+
+  /* 출격 */
+  const act = el("div"); act.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
+  if (Net.isHost){
+    act.appendChild(mkBtn(Net.live ? "Join the fight" : "Launch the flight", "pri", () => {
+      Net.setLive(true); startSortie(false);
+    }));
+    act.appendChild(mkBtn("Disband","dgr", () => Net.leaveFlight()));
+  } else {
+    act.appendChild(mkBtn(Net.live ? "Launch" : "Waiting for host", Net.live ? "pri" : "", () => {
+      if (Net.live) startSortie(false);
+    }));
+    act.appendChild(mkBtn("Leave","dgr", () => Net.leaveFlight()));
+  }
+  pane.appendChild(act);
+}
+
+/* ── 거래 ─────────────────────────────────────────────────── */
+const pendingOffers = new Map();   // 내가 보낸 제안 id -> payload
+function bagList(){ return Object.keys(P.bag).filter(k => P.bag[k] > 0 && PARTS[k]); }
+
+function openTrade(toPid){
+  const target = Net.roster.get(toPid);
+  if (!target){ sysLog("That pilot is no longer in the flight."); return; }
+
+  const give = { cred:0, items:[] }, want = { cred:0, items:[] };
+  const body = el("div");
+  body.style.cssText = "display:flex;flex-direction:column;gap:14px";
+  body.appendChild(el("div","note",
+    "An offer to <b>" + esc(target.call) + "</b>. If they accept, both records update at once."));
+
+  const grid = el("div","trade");
+
+  const mine = el("div");
+  mine.appendChild(el("h4","mine","You give"));
+  mine.appendChild(el("span","lbl","Credits — " + P.cred.toLocaleString("en-US") + " available"));
+  const mc = el("input","inp"); mc.type = "number"; mc.min = "0"; mc.max = String(P.cred);
+  mc.value = "0"; mc.setAttribute("aria-label","Credits to give");
+  mc.addEventListener("input", () => { give.cred = clamp(parseInt(mc.value || "0", 10) || 0, 0, P.cred); });
+  mine.appendChild(mc);
+  mine.appendChild(el("span","lbl","Parts"));
+  const mp = el("div","pick");
+  const owned = bagList();
+  if (!owned.length) mp.appendChild(el("span","note","Nothing stowed"));
+  owned.forEach(id => {
+    const b = el("button", null, esc(PARTS[id].n)); b.type = "button";
+    b.addEventListener("click", () => {
+      const i = give.items.indexOf(id);
+      if (i >= 0){ give.items.splice(i, 1); b.classList.remove("on"); }
+      else { give.items.push(id); b.classList.add("on"); }
+    });
+    mp.appendChild(b);
+  });
+  mine.appendChild(mp);
+  grid.appendChild(mine);
+
+  const theirs = el("div");
+  theirs.appendChild(el("h4", null, esc(target.call) + " gives"));
+  theirs.appendChild(el("span","lbl","Credits"));
+  const tc = el("input","inp"); tc.type = "number"; tc.min = "0"; tc.value = "0";
+  tc.setAttribute("aria-label","Credits to receive");
+  tc.addEventListener("input", () => { want.cred = Math.max(0, parseInt(tc.value || "0", 10) || 0); });
+  theirs.appendChild(tc);
+  theirs.appendChild(el("span","lbl","Parts — checked when they accept"));
+  const tp = el("div","pick");
+  Object.keys(PARTS).forEach(id => {
+    const b = el("button", null, esc(PARTS[id].n)); b.type = "button";
+    b.addEventListener("click", () => {
+      const i = want.items.indexOf(id);
+      if (i >= 0){ want.items.splice(i, 1); b.classList.remove("on"); }
+      else { want.items.push(id); b.classList.add("on"); }
+    });
+    tp.appendChild(b);
+  });
+  theirs.appendChild(tp);
+  grid.appendChild(theirs);
+  body.appendChild(grid);
+
+  const send = () => {
+    if (!give.cred && !give.items.length && !want.cred && !want.items.length){
+      sysLog("That offer is empty."); return;
+    }
+    if (give.cred > P.cred){ sysLog("You do not have that many credits."); return; }
+    for (const id of give.items) if (!P.bag[id]){ sysLog("You no longer hold one of those parts."); return; }
+    const id = "t" + Math.random().toString(36).slice(2, 10);
+    const payload = { t:"trade", sub:"offer", id, from:NETID, fromCall:P.call, to:toPid, give, want };
+    pendingOffers.set(id, payload);
+    Net.send(payload);
+    sysLog("Offer sent to " + target.call + ".");
+    closeModal();
+  };
+  openModal("Trade · " + target.call, body,
+    [mkBtn("Cancel","",closeModal), mkBtn("Send offer","pri",send)]);
+}
+
+function describeSide(s){
+  const bits = [];
+  if (s.cred) bits.push(s.cred.toLocaleString("en-US") + " credits");
+  (s.items || []).forEach(id => PARTS[id] && bits.push(PARTS[id].n));
+  return bits.length ? bits.join(", ") : "nothing";
+}
+
+function showOffer(m){
+  const body = el("div");
+  body.style.cssText = "display:flex;flex-direction:column;gap:12px";
+  const g = el("div","trade");
+  const a = el("div");
+  a.appendChild(el("h4","mine", esc(m.fromCall) + " gives"));
+  a.appendChild(el("div", null, esc(describeSide(m.give)))); g.appendChild(a);
+  const b = el("div");
+  b.appendChild(el("h4", null, "You give"));
+  b.appendChild(el("div", null, esc(describeSide(m.want)))); g.appendChild(b);
+  body.appendChild(g);
+
+  const lack = [];
+  if ((m.want.cred || 0) > P.cred) lack.push("not enough credits");
+  (m.want.items || []).forEach(id => {
+    if (!P.bag[id]) lack.push("no " + (PARTS[id] ? PARTS[id].n : "part"));
+  });
+  if (lack.length)
+    body.appendChild(el("div","warn","You cannot accept — " + esc(lack.join(", ")) + "."));
+
+  const accept = () => {
+    if (lack.length) return;
+    P.cred += (m.give.cred || 0) - (m.want.cred || 0);
+    (m.give.items || []).forEach(id => P.bag[id] = (P.bag[id] || 0) + 1);
+    (m.want.items || []).forEach(id => { P.bag[id]--; if (!P.bag[id]) delete P.bag[id]; });
+    save(); renderPilot();
+    Net.send({ t:"trade", sub:"accept", id:m.id, to:m.from, from:NETID, call:P.call });
+    sysLog("Trade complete with " + m.fromCall + ".");
+    closeModal();
+  };
+  const decline = () => {
+    Net.send({ t:"trade", sub:"decline", id:m.id, to:m.from, from:NETID, call:P.call });
+    closeModal();
+  };
+  const ok = mkBtn("Accept","pri",accept); if (lack.length) ok.disabled = true;
+  openModal("Offer from " + m.fromCall, body, [mkBtn("Decline","dgr",decline), ok]);
+}
+
+Net.on("trade", m => {
+  if (m.sub === "offer"){ if (m.to === NETID) showOffer(m); return; }
+  if (m.to !== NETID) return;
+  const mine = pendingOffers.get(m.id); if (!mine) return;
+  pendingOffers.delete(m.id);
+  if (m.sub === "decline"){ sysLog((m.call || "They") + " declined the trade."); return; }
+  if (m.sub === "accept"){
+    P.cred += (mine.want.cred || 0) - (mine.give.cred || 0);
+    (mine.want.items || []).forEach(id => P.bag[id] = (P.bag[id] || 0) + 1);
+    (mine.give.items || []).forEach(id => {
+      if (P.bag[id]){ P.bag[id]--; if (!P.bag[id]) delete P.bag[id]; }
+    });
+    save(); renderPilot();
+    sysLog("Trade complete with " + (m.call || "your wingman") + ".");
+  }
+});
+
+Net.on("chat", m => {
+  if (m.from === NETID) return;
+  Chat.push("ops", m.call || "??", m.text || "", false);
+});
+
+$("#bTrade").addEventListener("click", () => {
+  const others = [...Net.roster.values()].filter(r => r.pid !== NETID);
+  if (!others.length){
+    const b = el("div","note",
+      "Trading needs someone to trade with. Open a flight or join one on a squawk first.");
+    openModal("Trade", b, [mkBtn("Close","",closeModal)]);
+    return;
+  }
+  const box = el("div","roster");
+  others.forEach(r => {
+    const row = el("div","pl");
+    const dot = el("span","dot"); dot.style.color = r.color || "#7FB6E0";
+    row.appendChild(dot);
+    row.appendChild(el("div","who","<b>" + esc(r.call) + "</b>"));
+    row.appendChild(mkBtn("Offer","sm pri", () => { closeModal(); openTrade(r.pid); }));
+    box.appendChild(row);
+  });
+  openModal("Choose a trading partner", box, [mkBtn("Close","",closeModal)]);
+});
+</script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   WORLD — 지형, 하늘, 바다, 구름, 기체 모델
+   해질녘 연안 대지. 교전 구역 반경 2300m.
+   ═════════════════════════════════════════════════════════════ */
+const ARENA_R = 2300;
+const SEA_Y   = 0;
+
+/* ── 값 노이즈 ── */
+function h2(x,y){ const n = Math.sin(x*127.1 + y*311.7) * 43758.5453123; return n - Math.floor(n); }
+function vnoise(x,y){
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x-xi, yf = y-yi;
+  const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+  const a = h2(xi,yi), b = h2(xi+1,yi), c = h2(xi,yi+1), d = h2(xi+1,yi+1);
+  return a*(1-u)*(1-v) + b*u*(1-v) + c*(1-u)*v + d*u*v;
+}
+function fbm(x,y){
+  let s = 0, a = .5, f = 1;
+  for (let i=0;i<5;i++){ s += a*vnoise(x*f, y*f); f *= 2.07; a *= .5; }
+  return s;
+}
+/* 지표 고도(m). 원점에서 멀어질수록 바다로 떨어진다. */
+function terrainH(x,z){
+  const r = Math.sqrt(x*x + z*z) / 2900;
+  const fall = clamp(1 - r*r, 0, 1);
+  let h = Math.pow(fbm(x*0.00104, z*0.00104), 1.75) * 620;
+  const ridge = Math.abs(vnoise(x*0.00056 + 41, z*0.00056 + 17)*2 - 1);
+  h += (1 - ridge) * 190;
+  h = h * fall - 46;
+  const flat = vnoise(x*0.0004 - 9, z*0.0004 + 5);
+  if (h > 0 && flat > .62) h *= .55;              // 고원·평지
+  return h;
+}
+
+const World = {
+  ready:false, scene:null, camera:null, renderer:null,
+  sun:null, sky:null, clouds:[], water:null, terrain:null,
+
+  init(canvas){
+    if (this.ready) return;
+    const r = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:"high-performance" });
+    r.setPixelRatio(Math.min(devicePixelRatio, 2));
+    r.outputEncoding = THREE.sRGBEncoding;
+    r.toneMapping = THREE.ACESFilmicToneMapping;
+    r.toneMappingExposure = 1.0;
+    this.renderer = r;
+
+    const s = new THREE.Scene();
+    s.fog = new THREE.FogExp2(0xC3DCF0, 0.000165);
+    this.scene = s;
+
+    this.camera = new THREE.PerspectiveCamera(62, 1, 1.2, 14000);
+
+    /* 하늘 — 해질녘 그라디언트 */
+    const skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite:false, fog:false,
+      uniforms:{
+        top:{value:new THREE.Color(0x2C79BE)},
+        mid:{value:new THREE.Color(0x83BCE8)},
+        bot:{value:new THREE.Color(0xE2F0FB)}
+      },
+      vertexShader:
+        "varying vec3 vP; void main(){ vP = position;" +
+        "gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
+      fragmentShader:
+        "varying vec3 vP; uniform vec3 top; uniform vec3 mid; uniform vec3 bot;" +
+        "void main(){ float h = normalize(vP).y;" +
+        "vec3 c = mix(bot, mid, smoothstep(-0.13, 0.17, h));" +
+        "c = mix(c, top, smoothstep(0.06, 0.66, h));" +
+        "gl_FragColor = vec4(c, 1.0); }"
+    });
+    this.sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 24, 16), skyMat);
+    s.add(this.sky);
+
+    /* 조명 */
+    s.add(new THREE.HemisphereLight(0xD6EAFB, 0x6E6A5A, 0.72));
+    const sun = new THREE.DirectionalLight(0xFFF6E4, 1.32);
+    sun.position.set(-1200, 1500, 800);
+    s.add(sun); this.sun = sun;
+    const rim = new THREE.DirectionalLight(0x9CC4E6, 0.34);
+    rim.position.set(1200, 400, -1100); s.add(rim);
+
+    this.buildTerrain();
+    this.buildWater();
+    this.buildClouds();
+    this.ready = true;
+    this.resize();
+  },
+
+  buildTerrain(){
+    const SEG = 150, SIZE = 6400;
+    const g = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
+    g.rotateX(-Math.PI/2);
+    const pos = g.attributes.position;
+    const col = new Float32Array(pos.count * 3);
+    const c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++){
+      const x = pos.getX(i), z = pos.getZ(i);
+      const h = terrainH(x, z);
+      pos.setY(i, h);
+      let hex;
+      if (h < 5)        hex = 0xA88C63;      // 모래
+      else if (h < 95)  hex = 0x55603C;      // 마른 관목
+      else if (h < 235) hex = 0x5E5340;      // 흙
+      else if (h < 420) hex = 0x574E45;      // 암반
+      else if (h < 660) hex = 0x413E3A;      // 현무암
+      else              hex = 0xBCC2C8;      // 설선
+      c.setHex(hex);
+      const n = 0.86 + vnoise(x*0.02, z*0.02) * 0.28;
+      col[i*3] = c.r*n; col[i*3+1] = c.g*n; col[i*3+2] = c.b*n;
+    }
+    g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    g.computeVertexNormals();
+    const m = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:.97, metalness:.02 });
+    this.terrain = new THREE.Mesh(g, m);
+    this.scene.add(this.terrain);
+  },
+
+  buildWater(){
+    const g = new THREE.PlaneGeometry(16000, 16000, 1, 1);
+    g.rotateX(-Math.PI/2);
+    const m = new THREE.MeshStandardMaterial({
+      color:0x2F76AE, roughness:.18, metalness:.5, transparent:true, opacity:.95 });
+    this.water = new THREE.Mesh(g, m);
+    this.water.position.y = SEA_Y;
+    this.scene.add(this.water);
+  },
+
+  buildClouds(){
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 128;
+    const x = cv.getContext("2d");
+    const grd = x.createRadialGradient(64,64,4, 64,64,62);
+    grd.addColorStop(0,   "rgba(255,255,255,.98)");
+    grd.addColorStop(.42, "rgba(242,247,252,.6)");
+    grd.addColorStop(1,   "rgba(214,228,242,0)");
+    x.fillStyle = grd; x.fillRect(0,0,128,128);
+    const tex = new THREE.CanvasTexture(cv);
+    const mat = new THREE.SpriteMaterial({ map:tex, transparent:true,
+      opacity:.5, depthWrite:false, fog:true });
+    for (let i = 0; i < 90; i++){
+      const sp = new THREE.Sprite(mat.clone());
+      const a = Math.random()*Math.PI*2, rr = Math.sqrt(Math.random())*3600;
+      sp.position.set(Math.cos(a)*rr, rnd(340, 1150), Math.sin(a)*rr);
+      const sc = rnd(280, 760);
+      sp.scale.set(sc, sc*rnd(.42,.62), 1);
+      sp.material.opacity = rnd(.3,.58);
+      this.scene.add(sp); this.clouds.push(sp);
+    }
+  },
+
+  resize(){
+    if (!this.ready) return;
+    const w = innerWidth, h = innerHeight;
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w/h;
+    this.camera.updateProjectionMatrix();
+  }
+};
+
+/* ── 기체 모델 ─────────────────────────────────────────────── */
+function buildJetDelta(colorHex){
+  const g = new THREE.Group();
+  const shell  = new THREE.MeshStandardMaterial({ color:0x2B3540, roughness:.58, metalness:.42 });
+  const accent = new THREE.MeshStandardMaterial({ color:colorHex, roughness:.46, metalness:.3 });
+  const dark   = new THREE.MeshStandardMaterial({ color:0x151B22, roughness:.7,  metalness:.2 });
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.82, 1.18, 9.4, 14), shell);
+  body.rotation.x = Math.PI/2; g.add(body);
+
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(.82, 3.8, 14), shell);
+  nose.rotation.x = -Math.PI/2; nose.position.z = -6.6; g.add(nose);
+
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(.86, 14, 10),
+    new THREE.MeshStandardMaterial({ color:0x8FB6CE, roughness:.12, metalness:.7,
+      transparent:true, opacity:.72 }));
+  canopy.scale.set(.86, .68, 2.0); canopy.position.set(0, .62, -1.9); g.add(canopy);
+
+  /* 델타 주익 — 안쪽 + 뒤로 젖힌 바깥쪽 */
+  const inner = new THREE.Mesh(new THREE.BoxGeometry(7.4, .32, 4.2), accent);
+  inner.position.set(0, -.18, .9); g.add(inner);
+  [-1, 1].forEach(s => {
+    const outer = new THREE.Mesh(new THREE.BoxGeometry(5.6, .28, 2.5), accent);
+    outer.position.set(s*6.0, -.18, 2.0);
+    outer.rotation.y = s * 0.34;
+    g.add(outer);
+    const tipd = new THREE.Mesh(new THREE.BoxGeometry(.22, 1.5, 1.5), dark);
+    tipd.position.set(s*8.5, .45, 2.5); g.add(tipd);
+  });
+
+  /* 수평 미익 */
+  const stab = new THREE.Mesh(new THREE.BoxGeometry(5.0, .24, 1.7), accent);
+  stab.position.set(0, -.05, 4.3); g.add(stab);
+
+  /* 수직 미익 2매 */
+  [-1, 1].forEach(s => {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(.22, 2.3, 2.1), accent);
+    fin.position.set(s*1.05, 1.1, 4.1); fin.rotation.z = s * 0.2; g.add(fin);
+  });
+
+  /* 엔진 노즐 + 후연 */
+  const noz = new THREE.Mesh(new THREE.CylinderGeometry(1.0, .78, 1.2, 12), dark);
+  noz.rotation.x = Math.PI/2; noz.position.z = 5.2; g.add(noz);
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(.62, 4.2, 10),
+    new THREE.MeshBasicMaterial({ color:0xFFCE8A, transparent:true,
+      opacity:.0, blending:THREE.AdditiveBlending, depthWrite:false }));
+  flame.rotation.x = -Math.PI/2; flame.position.z = 7.4; g.add(flame);
+  g.userData.flame = flame;
+
+  return g;
+}
+
+/* ── 추가 기종 ───────────────────────────────────────────────
+   워크플로로 설계하고 r128 API·게임 계약 두 갈래로 검증한 기체들.
+   계약: 기수 -Z, 전장 약 13유닛, userData.flame 에 Mesh 하나. */
+
+function buildJetProp(colorHex){
+  const g = new THREE.Group();
+
+  // ── 재질 4개만 만들어 재사용
+  const shell  = new THREE.MeshStandardMaterial({ color:0x98A2AC, roughness:.40, metalness:.66 });
+  const accent = new THREE.MeshStandardMaterial({ color:colorHex, roughness:.46, metalness:.30 });
+  const dark   = new THREE.MeshStandardMaterial({ color:0x191F26, roughness:.72, metalness:.22 });
+  const glass  = new THREE.MeshStandardMaterial({ color:0x8FC6E0, roughness:.12, metalness:.10, transparent:true, opacity:.55 });
+
+  // 평판(날개·미익) 헬퍼 : 셰이프 XY 를 두께 중심으로 압출
+  const plate = function(pts, thick){
+    const sp = new THREE.Shape();
+    sp.moveTo(pts[0][0], pts[0][1]);
+    for (let i=1;i<pts.length;i++) sp.lineTo(pts[i][0], pts[i][1]);
+    const geo = new THREE.ExtrudeGeometry(sp, { depth:thick, bevelEnabled:false });
+    geo.translate(0,0,-thick/2);
+    return geo;
+  };
+
+  // ── 엔진 카울링 (z -6.0 ~ -3.0), 인라인 엔진이라 가늘고 길다
+  const cowl = new THREE.Mesh(new THREE.CylinderGeometry(.95, .72, 3.0, 14), shell);
+  cowl.rotation.x = Math.PI/2; cowl.position.z = -4.5; g.add(cowl);
+
+  // ── 주 동체 (z -3.0 ~ +1.5)
+  const mid = new THREE.Mesh(new THREE.CylinderGeometry(.85, .95, 4.5, 14), shell);
+  mid.rotation.x = Math.PI/2; mid.position.z = -0.75; g.add(mid);
+
+  // ── 후방 동체 (z +1.5 ~ +6.0), 뒤로 갈수록 가늘어짐
+  const boom = new THREE.Mesh(new THREE.CylinderGeometry(.28, .85, 4.5, 14), shell);
+  boom.rotation.x = Math.PI/2; boom.position.z = 3.75; g.add(boom);
+
+  // ── 스피너 (원뿔, 기수 -Z 방향)
+  const spin = new THREE.Mesh(new THREE.ConeGeometry(.55, 1.15, 14), shell);
+  spin.rotation.x = -Math.PI/2; spin.position.z = -6.575; g.add(spin);
+
+  // ── 스피너 도장 띠
+  const spinBand = new THREE.Mesh(new THREE.CylinderGeometry(.56, .42, .35, 14), accent);
+  spinBand.rotation.x = Math.PI/2; spinBand.position.z = -6.25; g.add(spinBand);
+
+  // ── 프로펠러 블레이드 3장 (피치를 지오메트리에 구움)
+  const bladeGeo = new THREE.BoxGeometry(.28, 3.1, .10);
+  bladeGeo.rotateY(.42); bladeGeo.translate(0, 1.60, 0);
+  for (let i=0;i<3;i++){
+    const bl = new THREE.Mesh(bladeGeo, dark);
+    bl.rotation.z = i * Math.PI * 2/3;
+    bl.position.z = -6.90;
+    g.add(bl);
+  }
+
+  // ── 회전 프로펠러 디스크 = flame (기수 앞, 양면)
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(3.35, 24),
+    new THREE.MeshBasicMaterial({ color:0xB9D2E6, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide }));
+  disc.position.z = -7.25; g.add(disc);
+  g.userData.flame = disc;
+
+  // ── 직선 테이퍼 주익 (익폭 16, 저익, 약간의 상반각)
+  [-1,1].forEach(function(s){
+    const w = new THREE.Mesh(plate([
+      [ .85*s,  2.00], [7.90*s,  .62], [8.00*s,  .10],
+      [7.90*s, -.50],  [ .85*s, -1.75]
+    ], .38), shell);
+    w.geometry.rotateX(-Math.PI/2);
+    w.position.set(0, -.42, -.55);
+    w.rotation.z = s * .07;
+    g.add(w);
+    // 날개 뿌리 필렛
+    const fil = new THREE.Mesh(new THREE.SphereGeometry(.70, 10, 6), shell);
+    fil.scale.set(.70, .45, 2.00);
+    fil.position.set(.85*s, -.45, -.55);
+    g.add(fil);
+  });
+
+  // ── 버블 캐노피 + 앞유리
+  const cano = new THREE.Mesh(new THREE.SphereGeometry(.55, 12, 8), glass);
+  cano.scale.set(1.02, 1.00, 2.30);
+  cano.position.set(0, .70, -.75); g.add(cano);
+  const wind = new THREE.Mesh(new THREE.BoxGeometry(.62, .46, .55), glass);
+  wind.position.set(0, .80, -2.05); wind.rotation.x = .30; g.add(wind);
+
+  // ── 캐노피 뒤 등줄기 페어링
+  const spine = new THREE.Mesh(new THREE.CylinderGeometry(.22, .50, 2.40, 8), shell);
+  spine.rotation.x = Math.PI/2; spine.position.set(0, .45, 1.75); g.add(spine);
+
+  // ── 동체 도장 띠
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(.845, .885, .80, 14), accent);
+  band.rotation.x = Math.PI/2; band.position.z = 1.35; g.add(band);
+
+  // ── 수직미익 (하나), 셰이프 +X 가 기수쪽
+  const fin = new THREE.Mesh(plate([
+    [ .40, 0], [3.00, 0], [1.90, 1.90], [1.15, 2.55], [ .45, 2.45]
+  ], .20), shell);
+  fin.geometry.rotateY(Math.PI/2);
+  fin.position.set(0, .25, 6.00); g.add(fin);
+
+  // ── 방향타 (도장색)
+  const rud = new THREE.Mesh(plate([
+    [ .38, .10], [ .42, 2.40], [-.15, 2.32], [-.55, .15]
+  ], .16), accent);
+  rud.geometry.rotateY(Math.PI/2);
+  rud.position.set(0, .25, 6.00); g.add(rud);
+
+  // ── 수평미익
+  [-1,1].forEach(function(s){
+    const t = new THREE.Mesh(plate([
+      [ .30*s,  .90], [2.90*s,  .35], [3.00*s, 0],
+      [2.90*s, -.35], [ .30*s, -.95]
+    ], .24), shell);
+    t.geometry.rotateX(-Math.PI/2);
+    t.position.set(0, .12, 5.10);
+    g.add(t);
+  });
+
+  // ── 복부 라디에이터 스쿠프
+  const scoop = new THREE.Mesh(new THREE.BoxGeometry(1.05, .62, 3.00), shell);
+  scoop.position.set(0, -.82, 1.00); g.add(scoop);
+  const inlet = new THREE.Mesh(new THREE.BoxGeometry(.88, .42, .16), dark);
+  inlet.position.set(0, -.84, -.52); g.add(inlet);
+
+  // ── 배기관 (카울링 좌우)
+  [-1,1].forEach(function(s){
+    const ex = new THREE.Mesh(new THREE.BoxGeometry(.18, .24, 1.60), dark);
+    ex.position.set(.80*s, .12, -4.40);
+    g.add(ex);
+  });
+
+  return g;
+}
+
+function buildJetBipe(colorHex){
+  const g = new THREE.Group();
+
+  // ── 재질 4종 (목재·캔버스 느낌이라 metalness 를 낮게) ──
+  const wood   = new THREE.MeshStandardMaterial({ color:0xD9C49B, roughness:.88, metalness:.04 }); // 캔버스 외피
+  const accent = new THREE.MeshStandardMaterial({ color:colorHex, roughness:.74, metalness:.08 }); // 파일럿 도장
+  const dark   = new THREE.MeshStandardMaterial({ color:0x3A2E24, roughness:.90, metalness:.06 }); // 지주·바퀴·가죽
+  const metal  = new THREE.MeshStandardMaterial({ color:0x9AA1A8, roughness:.44, metalness:.60 }); // 엔진·카울
+
+  // 메시 배치 헬퍼
+  const put = (geo, mat, x, y, z) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    g.add(m);
+    return m;
+  };
+
+  // ── 동체 : 8각 단면, 기수(-Z)가 굵고 꼬리로 갈수록 가늘어짐. z = -3.9 ~ 5.9 ──
+  const body = put(new THREE.CylinderGeometry(.40, 1.00, 9.8, 8), wood, 0, 0, 1.0);
+  body.rotation.x = Math.PI/2;
+
+  // 등판(터틀덱) — 조종석 뒤 척추
+  const deck = put(new THREE.CylinderGeometry(.34, .22, 4.7, 6), accent, 0, .62, 3.25);
+  deck.rotation.x = Math.PI/2;
+
+  // 꼬리 끝 마감 콘
+  const tailCap = put(new THREE.ConeGeometry(.40, .70, 8), wood, 0, 0, 6.20);
+  tailCap.rotation.x = Math.PI/2;
+
+  // ── 기수 : 카울 링 + 노출 성형엔진(7기통) ──
+  const cowl = put(new THREE.CylinderGeometry(1.04, 1.04, .55, 10), metal, 0, 0, -4.10);
+  cowl.rotation.x = Math.PI/2;
+  const crank = put(new THREE.CylinderGeometry(.55, .50, 1.20, 10), dark, 0, 0, -4.90);
+  crank.rotation.x = Math.PI/2;
+  const potGeo = new THREE.CylinderGeometry(.25, .18, 1.00, 6); // 실린더 1개 (바깥쪽 헤드가 굵음)
+  for (let i = 0; i < 7; i++){
+    const a = Math.PI/2 + i * (Math.PI*2/7);
+    const pot = put(potGeo, metal, Math.cos(a)*.92, Math.sin(a)*.92, -4.90);
+    pot.rotation.z = a - Math.PI/2; // 방사형으로 바깥을 향하게
+  }
+
+  // ── 프로펠러 : 허브 + 목재 2엽 + 회전 디스크(flame) ──
+  const hub = put(new THREE.CylinderGeometry(.26, .34, .60, 8), dark, 0, 0, -5.70);
+  hub.rotation.x = Math.PI/2;
+  const blade = put(new THREE.BoxGeometry(.34, 4.20, .10), wood, 0, 0, -6.05);
+  blade.rotation.z = .16;
+
+  // 엔진 출력 표현 = 프로펠러 디스크 (게임이 opacity 를 0~1 로 조절)
+  const flame = new THREE.Mesh(
+    new THREE.CircleGeometry(2.15, 18),
+    new THREE.MeshBasicMaterial({ color:0xFFE2A4, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide })
+  );
+  flame.position.set(0, 0, -6.15);
+  g.add(flame);
+  g.userData.flame = flame;
+
+  // ── 오픈 콕핏 ──
+  put(new THREE.CylinderGeometry(.46, .40, .50, 10), dark, 0, .50, .35);        // 안쪽 구멍
+  const coam = put(new THREE.TorusGeometry(.50, .11, 6, 12), dark, 0, .70, .35); // 가죽 코밍
+  coam.rotation.x = -Math.PI/2;
+  put(new THREE.BoxGeometry(.50, .34, .34), accent, 0, .82, .98);                // 헤드레스트
+  const glass = put(new THREE.BoxGeometry(.62, .30, .08), dark, 0, .95, -.22);   // 바람막이
+  glass.rotation.x = .35;
+
+  // ── 복엽 주익 : 하익(익폭 15.6) / 상익(익폭 16.4, 살짝 앞으로 스태거) ──
+  put(new THREE.BoxGeometry(15.6, .22, 3.00), wood, 0, -.62, -1.30);
+  put(new THREE.BoxGeometry(16.4, .24, 3.30), wood, 0, 2.75, -1.85);
+  put(new THREE.BoxGeometry(3.40, .28, 3.40), accent, 0, 2.75, -1.85); // 상익 중앙 도장
+  [-1, 1].forEach(s => {
+    put(new THREE.BoxGeometry(1.60, .26, 3.30), accent, s*7.30, 2.75, -1.85);  // 상익 익단 도장
+    put(new THREE.BoxGeometry(1.50, .24, 3.00), accent, s*6.90, -.62, -1.30);  // 하익 익단 도장
+  });
+
+  // ── 지주(strut) 와 브레이싱 와이어 ──
+  const strutGeo = new THREE.CylinderGeometry(.085, .085, 3.20, 6);
+  const cabGeo   = new THREE.CylinderGeometry(.075, .075, 2.30, 6);
+  const wireGeo  = new THREE.CylinderGeometry(.030, .030, 3.60, 4);
+  [-1, 1].forEach(s => {
+    [-2.60, -0.90].forEach(z => put(strutGeo, dark, s*5.60, 1.06, z)); // 익간 지주
+    [-2.90, -1.20].forEach(z => put(cabGeo,   dark, s*0.60, 1.48, z)); // 동체-상익 카베인 지주
+    [-1, 1].forEach(d => {                                             // X 자 브레이싱 와이어
+      const w = put(wireGeo, dark, s*5.60, 1.06, -1.75);
+      w.rotation.x = d * .496;
+    });
+  });
+
+  // ── 미익 ──
+  put(new THREE.BoxGeometry(.14, 1.80, 1.80), accent, 0, 1.10, 5.50); // 수직 미익 + 방향타
+  put(new THREE.BoxGeometry(5.40, .18, 1.50), wood,   0,  .15, 5.50); // 수평 미익
+  const skid = put(new THREE.CylinderGeometry(.07, .10, 1.00, 6), dark, 0, -.55, 5.85);
+  skid.rotation.x = -.50;                                             // 꼬리 스키드
+
+  // ── 고정식 강착장치 (V 자 다리 + 축 + 바퀴) ──
+  const axle = put(new THREE.CylinderGeometry(.08, .08, 3.30, 6), dark, 0, -2.20, -2.45);
+  axle.rotation.z = Math.PI/2;
+  const wheelGeo = new THREE.CylinderGeometry(.62, .62, .26, 12);
+  const capGeo   = new THREE.CylinderGeometry(.26, .26, .30, 10);
+  const legGeo   = new THREE.CylinderGeometry(.075, .075, 1.95, 6);
+  [-1, 1].forEach(s => {
+    const w = put(wheelGeo, dark,   s*1.50, -2.20, -2.45); w.rotation.z = Math.PI/2;
+    const c = put(capGeo,   accent, s*1.50, -2.20, -2.45); c.rotation.z = Math.PI/2; // 휠캡에 개인색
+    [-1, 1].forEach(f => {                                                          // 앞/뒤 다리
+      const leg = put(legGeo, dark, s*0.975, -1.475, -2.45 - f*0.325);
+      leg.rotation.z =  s * .539;
+      leg.rotation.x = -f * .421;
+    });
+  });
+
+  return g;
+}
+
+function buildJetVoid(colorHex){
+  const g = new THREE.Group();
+
+  // 공용 재질 4종 (전 부품 재사용)
+  const shell  = new THREE.MeshStandardMaterial({ color:0x39414E, roughness:.55, metalness:.5 });
+  const dark   = new THREE.MeshStandardMaterial({ color:0x12161C, roughness:.78, metalness:.28 });
+  const accent = new THREE.MeshStandardMaterial({ color:colorHex, roughness:.34, metalness:.55 });
+  const glow   = new THREE.MeshBasicMaterial({ color:colorHex, side:THREE.DoubleSide });
+  // 후방 대형 원반은 면적이 커서 같은 밝기로 두면 시야를 덮는다. 따로 눌러 둔다.
+  const glowDim = new THREE.MeshBasicMaterial({ color:colorHex, side:THREE.DoubleSide,
+    transparent:true, opacity:.42 });
+
+  // ── 육각 코어 동체 (z -3.5 ~ +4.5)
+  const coreGeo = new THREE.CylinderGeometry(2.35, 2.0, 8.0, 6);
+  coreGeo.rotateX(Math.PI/2);                 // 축을 Z 로 (넓은 쪽이 뒤)
+  const core = new THREE.Mesh(coreGeo, shell);
+  core.position.z = .5; g.add(core);
+
+  // ── 기수 프라우 (끝 z -6.7)
+  const noseGeo = new THREE.ConeGeometry(2.0, 3.2, 6);
+  noseGeo.rotateX(-Math.PI/2);                // 뾰족한 끝이 앞(-Z)
+  const nose = new THREE.Mesh(noseGeo, shell);
+  nose.position.z = -5.1; g.add(nose);
+
+  // 기수 접합 도장 칼라 / 발광 밴드
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(1.95,.22,6,6), accent);
+  collar.rotation.z = Math.PI/6; collar.position.z = -3.55; g.add(collar);
+  const band = new THREE.Mesh(new THREE.TorusGeometry(1.18,.12,6,6), glow);
+  band.rotation.z = Math.PI/6; band.position.z = -4.9; g.add(band);
+
+  // 기수 센서 블리스터
+  const sensor = new THREE.Mesh(new THREE.BoxGeometry(.9,.55,1.6), dark);
+  sensor.position.set(0,1.4,-4.0); g.add(sensor);
+
+  // 조종 캐노피
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.0,10,6), dark);
+  canopy.scale.set(1.0,.55,1.5); canopy.position.set(0,1.5,-2.4); g.add(canopy);
+
+  // 등쪽 스파인 / 배쪽 킬
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(.7,.7,3.6), shell);
+  spine.position.set(0,2.1,1.5); g.add(spine);
+  const keel = new THREE.Mesh(new THREE.BoxGeometry(1.1,.9,3.6), dark);
+  keel.position.set(0,-2.0,1.5); g.add(keel);
+
+  // ── 코어를 감싸는 3중 링
+  const ringA = new THREE.Mesh(new THREE.TorusGeometry(4.3,.32,6,16), accent);
+  ringA.position.z = -1.2; g.add(ringA);
+  const ringB = new THREE.Mesh(new THREE.TorusGeometry(4.05,.13,6,16), glow);
+  ringB.position.z = 1.5; g.add(ringB);
+  const ringC = new THREE.Mesh(new THREE.TorusGeometry(2.75,.24,6,12), accent);
+  ringC.position.z = 3.9; g.add(ringC);
+
+  // ── 후방 원반형 추진기
+  const bellGeo = new THREE.CylinderGeometry(3.4,2.4,1.2,12);
+  bellGeo.rotateX(Math.PI/2);
+  const bell = new THREE.Mesh(bellGeo, shell);
+  bell.position.z = 5.1; g.add(bell);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(3.15,.3,6,12), accent);
+  rim.position.z = 5.72; g.add(rim);
+  const throatGeo = new THREE.CylinderGeometry(2.6,2.6,.9,12);
+  throatGeo.rotateX(Math.PI/2);
+  const throat = new THREE.Mesh(throatGeo, dark);
+  throat.position.z = 5.9; g.add(throat);
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(2.05,16), glowDim);
+  disc.position.z = 6.37; g.add(disc);
+
+  // ── 상·하 링 지지대
+  [-1,1].forEach(s=>{
+    const strut = new THREE.Mesh(new THREE.BoxGeometry(.4,2.4,.55), shell);
+    strut.position.set(0, s*3.3, -1.2); g.add(strut);
+  });
+
+  // ── 좌우 대칭 부품
+  [-1,1].forEach(s=>{
+    // 캐논 포드 본체 (z -5.0 ~ +2.6)
+    const podGeo = new THREE.CylinderGeometry(.8,.72,7.6,8);
+    podGeo.rotateX(Math.PI/2);
+    const pod = new THREE.Mesh(podGeo, shell);
+    pod.position.set(s*2.95,-.45,-1.2); g.add(pod);
+
+    // 총구 블록 + 포신 + 발광 링 (앞으로 z -7.8 까지)
+    const muzGeo = new THREE.CylinderGeometry(.95,.95,1.0,8);
+    muzGeo.rotateX(Math.PI/2);
+    const muzzle = new THREE.Mesh(muzGeo, dark);
+    muzzle.position.set(s*2.95,-.45,-5.2); g.add(muzzle);
+    const barGeo = new THREE.CylinderGeometry(.3,.3,2.4,8);
+    barGeo.rotateX(Math.PI/2);
+    const barrel = new THREE.Mesh(barGeo, dark);
+    barrel.position.set(s*2.95,-.45,-6.6); g.add(barrel);
+    const muzRing = new THREE.Mesh(new THREE.TorusGeometry(.42,.1,6,10), glow);
+    muzRing.position.set(s*2.95,-.45,-7.45); g.add(muzRing);
+
+    // 포드-코어 파일런
+    const pylon = new THREE.Mesh(new THREE.BoxGeometry(1.4,.5,2.4), shell);
+    pylon.position.set(s*2.6,-.45,.2); g.add(pylon);
+
+    // 포드 후방 소형 노즐
+    const nozGeo = new THREE.CylinderGeometry(.62,.62,.5,8);
+    nozGeo.rotateX(Math.PI/2);
+    const noz = new THREE.Mesh(nozGeo, dark);
+    noz.position.set(s*2.95,-.45,2.75); g.add(noz);
+    const nozGlow = new THREE.Mesh(new THREE.CircleGeometry(.5,10), glow);
+    nozGlow.position.set(s*2.95,-.45,3.02); g.add(nozGlow);
+
+    // 코어 측면 발광 패널
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(.25,.9,3.6), glow);
+    panel.position.set(s*1.95,.45,.9); g.add(panel);
+
+    // 링 A ↔ 링 B 를 잇는 케이지 스트럿 (핀 마운트)
+    const cage = new THREE.Mesh(new THREE.BoxGeometry(.34,.7,2.9), shell);
+    cage.position.set(s*4.17,0,.15); g.add(cage);
+
+    // 측면 방열 핀 (기울여 장착)
+    const wing = new THREE.Group();
+    wing.position.set(s*5.6,0,.95);
+    wing.rotation.z = s*.25;
+    wing.add(new THREE.Mesh(new THREE.BoxGeometry(2.9,.3,3.3), shell));
+    const strip1 = new THREE.Mesh(new THREE.BoxGeometry(2.2,.16,.6), glow);
+    strip1.position.set(0,.2,-1.0); wing.add(strip1);
+    const strip2 = new THREE.Mesh(new THREE.BoxGeometry(2.2,.16,.6), glow);
+    strip2.position.set(0,.2,1.0); wing.add(strip2);
+    const fence = new THREE.Mesh(new THREE.BoxGeometry(.28,1.7,2.6), accent);
+    fence.position.set(s*1.25,.8,.1); wing.add(fence);
+    g.add(wing);
+  });
+
+  // ── 엔진 화염 (게임이 opacity 0~1 로 제어)
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(1.05,4.6,12),
+    new THREE.MeshBasicMaterial({ color:0x9FD6FF, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false }));
+  flame.rotation.x = Math.PI/2;   // 원뿔 끝이 뒤(+Z)
+  flame.position.z = 8.6; g.add(flame);
+  g.userData.flame = flame;
+
+  return g;
+}
+
+/* 폭발 — 짧게 살고 사라지는 스프라이트 */
+const Boom = {
+  tex:null, live:[],
+  _mk(){
+    const cv = document.createElement("canvas"); cv.width = cv.height = 64;
+    const x = cv.getContext("2d");
+    const gr = x.createRadialGradient(32,32,2, 32,32,31);
+    gr.addColorStop(0,   "rgba(255,246,214,1)");
+    gr.addColorStop(.3,  "rgba(255,176,64,.9)");
+    gr.addColorStop(.68, "rgba(214,74,36,.45)");
+    gr.addColorStop(1,   "rgba(90,40,20,0)");
+    x.fillStyle = gr; x.fillRect(0,0,64,64);
+    this.tex = new THREE.CanvasTexture(cv);
+  },
+  at(v3, size, life){
+    if (!this.tex) this._mk();
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:this.tex,
+      transparent:true, depthWrite:false, blending:THREE.AdditiveBlending }));
+    sp.position.copy(v3); sp.scale.setScalar(size);
+    World.scene.add(sp);
+    this.live.push({ sp, t:0, life: life || .7, s0: size });
+  },
+  step(dt){
+    for (let i = this.live.length-1; i >= 0; i--){
+      const b = this.live[i]; b.t += dt;
+      const k = b.t / b.life;
+      if (k >= 1){ World.scene.remove(b.sp); b.sp.material.dispose(); this.live.splice(i,1); continue; }
+      b.sp.scale.setScalar(b.s0 * (1 + k*2.4));
+      b.sp.material.opacity = 1 - k;
+    }
+  },
+  clear(){ this.live.forEach(b => World.scene.remove(b.sp)); this.live.length = 0; }
+};
+</script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   FLY — 비행 물리, 무장, 드론, HUD, 루프
+   좌표: 기수 = 로컬 -Z, 고도 = +Y. 속도는 m/s로 계산하고 KT로 표시한다.
+   ═════════════════════════════════════════════════════════════ */
+const KT = 1.94384, FT = 3.28084, G0 = 9.81;
+const FWD = new THREE.Vector3(0,0,-1);
+const UPV = new THREE.Vector3(0,1,0);
+const RGT = new THREE.Vector3(1,0,0);
+
+const CFG = {
+  thrust:70, drag:0.00224, vmax:196, vmin:0,
+  pitch:1.42, roll:2.55, yaw:0.62,
+  abMul:1.48, abDrain:0.34, abFill:0.16,
+  bulletV:790, bulletLife:1.35, bulletDmg:5, rof:11, ammo:700,
+  mslV:250, mslAcc:120, mslVmax:360, mslTurn:2.1, mslLife:11, mslDmg:56, msl:4,
+  lockCone:0.245, lockTime:1.1, lockRange:1700,
+  hitR:9.5, respawn:5, killCred:140
+};
+
+const Game = {
+  running:false, solo:false, raf:0, last:0, netAcc:0, dmgAcc:new Map(), dmgT:0,
+  view:0, showBoard:false, chatting:false,
+  me:null, jet:null, remotes:new Map(), drones:[], bullets:[], missiles:[],
+  hudCv:null, hud:null, W:0, H:0, dpr:1, netTimer:0, jetKey:null
+};
+
+/* ── 조종 입력 ── */
+const K = Object.create(null);
+const touch = { on:false, sx:0, sy:0, gun:false, msl:false, up:false, dn:false, ab:false };
+
+addEventListener("keydown", e => {
+  if (!Game.running) return;
+  if (Game.chatting){
+    if (e.key === "Escape"){ closeChat(); e.preventDefault(); }
+    return;
+  }
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  K[k] = true;
+  if (k === "Tab"){ Game.showBoard = true; renderBoard(); $("#board").classList.remove("hide"); e.preventDefault(); }
+  if (k === "t"){ openChat(); e.preventDefault(); }
+  if (k === "c"){ Game.view = (Game.view + 1) % 2; }
+  if (k === "z"){ Mouse.x = 0; Mouse.y = 0; }
+  if (k === "Escape"){ endSortie(); }
+  if (k === " ") e.preventDefault();
+}, {passive:false});
+addEventListener("keyup", e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  K[k] = false;
+  if (k === "Tab"){ Game.showBoard = false; $("#board").classList.add("hide"); }
+});
+addEventListener("blur", () => { for (const k in K) K[k] = false; });
+
+function openChat(){
+  Game.chatting = true;
+  const box = $("#chatin"); box.classList.remove("hide");
+  const inp = box.querySelector("input"); inp.value = ""; inp.focus();
+}
+function closeChat(){
+  Game.chatting = false; $("#chatin").classList.add("hide");
+  for (const k in K) K[k] = false;
+}
+$("#chatin").querySelector("input").addEventListener("keydown", e => {
+  e.stopPropagation();
+  if (e.key === "Enter"){ Chat.send(e.target.value); closeChat(); }
+  else if (e.key === "Escape") closeChat();
+});
+
+/* 마우스 조종 — 화면을 클릭하면 포인터를 가둔다.
+   스틱은 놓은 자리에 머문다(실제 조종간처럼). Z 로 중립 복귀. */
+const Mouse = { x:0, y:0, locked:false, gun:false, msl:false };
+(function(){
+  const cv = $("#gl");
+  if (!cv) return;
+  cv.addEventListener("click", () => {
+    if (Game.running && P.ctrl === "mouse" && !Mouse.locked){
+      try{ cv.requestPointerLock(); }catch(e){}
+    }
+  });
+  document.addEventListener("pointerlockchange", () => {
+    Mouse.locked = document.pointerLockElement === cv;
+    if (!Mouse.locked){ Mouse.gun = false; Mouse.msl = false; }
+  });
+  document.addEventListener("mousemove", e => {
+    if (!Mouse.locked) return;
+    const k = .0024 * (P.sens || 1);
+    Mouse.x = clamp(Mouse.x + (e.movementX || 0) * k, -1, 1);
+    Mouse.y = clamp(Mouse.y + (e.movementY || 0) * k, -1, 1);
+  });
+  cv.addEventListener("mousedown", e => {
+    if (!Game.running || P.ctrl !== "mouse" || !Mouse.locked) return;
+    if (e.button === 0) Mouse.gun = true;
+    else if (e.button === 2) Mouse.msl = true;
+  });
+  addEventListener("mouseup", e => {
+    if (e.button === 0) Mouse.gun = false;
+    else if (e.button === 2) Mouse.msl = false;
+  });
+  cv.addEventListener("contextmenu", e => { if (P.ctrl === "mouse") e.preventDefault(); });
+})();
+
+/* 터치 */
+(function(){
+  const st = $("#stick"), knob = st.querySelector(".k");
+  let id = null, cx = 0, cy = 0;
+  st.addEventListener("pointerdown", e => {
+    id = e.pointerId; st.setPointerCapture(id);
+    const r = st.getBoundingClientRect(); cx = r.left + r.width/2; cy = r.top + r.height/2;
+  });
+  st.addEventListener("pointermove", e => {
+    if (e.pointerId !== id) return;
+    const dx = clamp((e.clientX - cx)/52, -1, 1), dy = clamp((e.clientY - cy)/52, -1, 1);
+    touch.sx = dx; touch.sy = dy;
+    knob.style.transform = "translate(" + (dx*40) + "px," + (dy*40) + "px)";
+  });
+  const rel = e => { if (e.pointerId !== id) return; id = null;
+    touch.sx = touch.sy = 0; knob.style.transform = ""; };
+  st.addEventListener("pointerup", rel); st.addEventListener("pointercancel", rel);
+
+  const bind = (sel, key) => {
+    const b = $(sel); if (!b) return;
+    const on  = e => { e.preventDefault(); touch[key] = true;  b.classList.add("hit"); };
+    const off = e => { e.preventDefault(); touch[key] = false; b.classList.remove("hit"); };
+    b.addEventListener("pointerdown", on);
+    b.addEventListener("pointerup", off); b.addEventListener("pointercancel", off);
+    b.addEventListener("pointerleave", off);
+  };
+  bind("#tgun","gun"); bind("#tmsl","msl"); bind("#tup","up"); bind("#tdn","dn"); bind("#tab2","ab");
+})();
+
+/* 내 기체의 지문. 기종이나 반입 모델 보정이 바뀌면 값이 달라진다. */
+function myJetKey(){
+  const c = P.custom;
+  return P.jet + "|" + (P.jet === "custom" && c
+    ? c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" + (c.tint ? 1 : 0)
+    : "");
+}
+
+/* ── 출격 / 귀환 ─────────────────────────────────────────── */
+function freshMe(){
+  const m = mods();
+  return {
+    pos:new THREE.Vector3(), quat:new THREE.Quaternion(), vel:new THREE.Vector3(),
+    speed:120, throttle:.72, ab:1, abOn:false,
+    hpMax:100 + m.hp, hp:100 + m.hp,
+    ammo:CFG.ammo, ammoMax:CFG.ammo,
+    msl:CFG.msl + m.msl, mslMax:CFG.msl + m.msl,
+    fireCd:0, alive:true, respawnAt:0,
+    k:0, d:0, streak:0, lockT:0, lockTgt:null, locked:false,
+    outT:0, warn:"", mods:m
+  };
+}
+function spawnPoint(me){
+  const a = Math.random()*Math.PI*2, r = rnd(900, 1500);
+  me.pos.set(Math.cos(a)*r, rnd(520, 780), Math.sin(a)*r);
+  const look = new THREE.Vector3(rnd(-200,200), me.pos.y*0.8, rnd(-200,200));
+  const mtx = new THREE.Matrix4().lookAt(me.pos, look, UPV);
+  me.quat.setFromRotationMatrix(mtx);
+  me.speed = 140; me.throttle = .8; me.ab = 1;
+  me.vel.copy(FWD).applyQuaternion(me.quat).multiplyScalar(me.speed);
+  me.hp = me.hpMax; me.ammo = me.ammoMax; me.msl = me.mslMax;
+  me.alive = true; me.outT = 0; me.lockT = 0; me.locked = false; me.lockTgt = null;
+  camInit = false;                 // 카메라를 새 위치로 즉시 스냅
+}
+
+function startSortie(solo){
+  if (Game.running) return;
+  Game.solo = !!solo;
+  $("#ops").classList.add("off");
+  $("#game").classList.remove("off");
+
+  World.init($("#gl"));
+  Game.hudCv = $("#hud"); Game.hud = Game.hudCv.getContext("2d");
+  sizeHud();
+
+  Game.me = freshMe();
+  spawnPoint(Game.me);
+  const wantKey = myJetKey();
+  if (!Game.jet || Game.jetKey !== wantKey){
+    if (Game.jet) World.scene.remove(Game.jet);
+    Game.jet = buildJet(new THREE.Color(P.color).getHex(), P.jet, P.custom);
+    Game.jetKey = wantKey;
+    World.scene.add(Game.jet);
+  }
+  Game.jet.visible = true;
+
+  Game.bullets.length = 0; Game.missiles.forEach(m => World.scene.remove(m.g));
+  Game.missiles.length = 0; Boom.clear();
+  clearDrones(); clearRemotes();
+
+  if (Game.solo || Net.roster.size < 2) spawnDrones(Game.solo ? 4 : 2);
+
+  if ("ontouchstart" in window) $("#touch").classList.add("on");
+  paintTips();
+
+  P.sorties++; save();
+  renderPilot();
+  Chat.push("ops","", Game.solo ? "Solo training sortie." : "Airborne. Engagement area radius 2.3 km.", true);
+
+  Game.running = true; Game.last = now(); Game.netAcc = 0;
+  clearInterval(Game.netTimer);
+  Game.netTimer = setInterval(netTick, 62);      // 약 16Hz
+  cancelAnimationFrame(Game.raf);
+  Game.raf = requestAnimationFrame(loop);
+}
+
+function endSortie(){
+  if (!Game.running) return;
+  Game.running = false;
+  cancelAnimationFrame(Game.raf);
+  clearInterval(Game.netTimer); Game.netTimer = 0;
+  const aw = $("#away"); if (aw) aw.remove();
+  closeChat();
+  $("#board").classList.add("hide"); Game.showBoard = false;
+  $("#touch").classList.remove("on");
+  if (document.pointerLockElement) document.exitPointerLock();
+  $("#game").classList.add("off");
+  $("#ops").classList.remove("off");
+  if (Game.jet) Game.jet.visible = false;
+  clearDrones();
+  save(); renderPilot(); renderFlight();
+}
+
+/* ── 원격 기체 ── */
+function clearRemotes(){
+  Game.remotes.forEach(r => World.scene.remove(r.g));
+  Game.remotes.clear();
+}
+/* 상대가 고른 기종의 지문. 반입 모델이 도착하면 값이 바뀌어 기체가 다시 만들어진다. */
+function jetSig(info){
+  const k = info.jet || "delta";
+  if (k !== "custom" || !info.jetCfg) return k;
+  const c = info.jetCfg;
+  return "custom|" + c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" +
+         (c.tint ? 1 : 0) + "|" + (Models.cache.has(c.src) ? 1 : 0);
+}
+function makeRemoteJet(info){
+  const col = new THREE.Color(info.color || "#7FB6E0").getHex();
+  const k = info.jet || "delta";
+  if (k === "custom" && info.jetCfg && info.jetCfg.shared){
+    if (!Models.cache.has(info.jetCfg.src))
+      Models.fromUrl(info.jetCfg.src).catch(() => {});   // 도착하면 지문이 바뀐다
+    return buildJet(col, "custom", info.jetCfg);
+  }
+  return buildJet(col, k, null);
+}
+function remoteFor(pid){
+  let r = Game.remotes.get(pid);
+  const info = Net.roster.get(pid) || {};
+  const sig = jetSig(info);
+  if (!r){
+    r = { g: makeRemoteJet(info), sig,
+          pos:new THREE.Vector3(), quat:new THREE.Quaternion(),
+          tp:new THREE.Vector3(), tq:new THREE.Quaternion(),
+          vel:new THREE.Vector3(), hp:100, st:"fly", fr:0, k:0, d:0, call: info.call || "??" };
+    World.scene.add(r.g);
+    Game.remotes.set(pid, r);
+  } else if (r.sig !== sig){
+    World.scene.remove(r.g);
+    r.g = makeRemoteJet(info); r.sig = sig;
+    r.g.position.copy(r.pos); r.g.quaternion.copy(r.quat);
+    World.scene.add(r.g);
+  }
+  return r;
+}
+function syncRemotes(dt){
+  for (const [pid, s] of Net.states){
+    if (pid === NETID) continue;
+    const r = remoteFor(pid);
+    const info = Net.roster.get(pid); if (info) r.call = info.call;
+    if (s.p) r.tp.set(s.p[0], s.p[1], s.p[2]);
+    if (s.q) r.tq.set(s.q[0], s.q[1], s.q[2], s.q[3]);
+    if (s.v) r.vel.set(s.v[0], s.v[1], s.v[2]);
+    r.hp = s.hp != null ? s.hp : r.hp;
+    r.st = s.st || "fly"; r.fr = s.fr || 0;
+    r.k = s.k || 0; r.d = s.d || 0;
+    /* 지연 보정: 마지막 패킷 이후 흐른 시간만큼 속도로 밀어준다 */
+    const lag = clamp((now() - s.at) / 1000, 0, .45);
+    const pred = r.tp.clone().addScaledVector(r.vel, lag);
+    if (r.pos.lengthSq() === 0) r.pos.copy(pred);
+    r.pos.lerp(pred, 1 - Math.exp(-11*dt));
+    r.quat.slerp(r.tq, 1 - Math.exp(-13*dt));
+    r.g.position.copy(r.pos); r.g.quaternion.copy(r.quat);
+    r.g.visible = r.st !== "down";
+    const f = r.g.userData.flame;
+    if (f) f.material.opacity = r.g.visible ? (s.ab ? .82 : .3) : 0;
+  }
+  for (const [pid, r] of Game.remotes){
+    if (!Net.states.has(pid) || !Net.roster.has(pid)){
+      World.scene.remove(r.g); Game.remotes.delete(pid);
+    }
+  }
+}
+
+/* ── 훈련 드론 ─────────────────────────────────────────── */
+function clearDrones(){ Game.drones.forEach(d => World.scene.remove(d.g)); Game.drones.length = 0; }
+function spawnDrones(n){
+  for (let i = 0; i < n; i++){
+    const a = (i/n)*Math.PI*2 + rnd(-.4,.4), r = rnd(700, 1500);
+    const d = {
+      g: buildJet(0x8894A2),
+      pos: new THREE.Vector3(Math.cos(a)*r, rnd(420, 820), Math.sin(a)*r),
+      quat: new THREE.Quaternion(), vel: new THREE.Vector3(),
+      speed: rnd(110, 150), hp: 55, alive: true, fireCd: rnd(1,3),
+      wander: new THREE.Vector3(), wanderT: 0, name: "DRONE-" + (i+1)
+    };
+    d.g.position.copy(d.pos); World.scene.add(d.g); Game.drones.push(d);
+  }
+}
+const _m4 = new THREE.Matrix4(), _q1 = new THREE.Quaternion(), _v1 = new THREE.Vector3();
+function stepDrones(dt){
+  const me = Game.me;
+  for (const d of Game.drones){
+    if (!d.alive) continue;
+    d.wanderT -= dt;
+    let aim;
+    const toMe = _v1.copy(me.pos).sub(d.pos);
+    const dist = toMe.length();
+    const engage = me.alive && dist < 1250;
+    if (engage){
+      /* 리드 조준 */
+      const lead = me.pos.clone().addScaledVector(me.vel, clamp(dist/CFG.bulletV, 0, 1.4));
+      aim = lead;
+    } else {
+      if (d.wanderT <= 0){
+        const a = Math.random()*Math.PI*2, r = rnd(400, 1600);
+        d.wander.set(Math.cos(a)*r, rnd(400, 900), Math.sin(a)*r);
+        d.wanderT = rnd(5, 11);
+      }
+      aim = d.wander;
+    }
+    /* 지형 회피 */
+    const ah = terrainH(d.pos.x, d.pos.z);
+    if (d.pos.y < ah + 140) aim = aim.clone().setY(ah + 420);
+    if (d.pos.length() > ARENA_R * .92) aim = new THREE.Vector3(0, d.pos.y, 0);
+
+    _m4.lookAt(d.pos, aim, UPV);
+    _q1.setFromRotationMatrix(_m4);
+    d.quat.rotateTowards(_q1, 1.25 * dt);
+
+    d.speed = lerp(d.speed, engage ? 165 : 130, 1 - Math.exp(-.9*dt));
+    const fwd = FWD.clone().applyQuaternion(d.quat);
+    d.vel.lerp(fwd.clone().multiplyScalar(d.speed), 1 - Math.exp(-5*dt));
+    d.pos.addScaledVector(d.vel, dt);
+    d.g.position.copy(d.pos); d.g.quaternion.copy(d.quat);
+    const fl = d.g.userData.flame; if (fl) fl.material.opacity = .35;
+
+    /* 사격 */
+    d.fireCd -= dt;
+    if (engage && d.fireCd <= 0 && dist < 800){
+      const dot = fwd.dot(toMe.normalize());
+      if (dot > 0.985){
+        d.fireCd = 0.14;
+        fireBullet(d.pos, d.quat, d.vel, "drone", 3.4);
+      } else d.fireCd = 0.3;
+    }
+  }
+  Game.drones = Game.drones.filter(d => {
+    if (d.alive) return true;
+    World.scene.remove(d.g); return false;
+  });
+}
+
+/* ── 탄약 ─────────────────────────────────────────────────── */
+const MAXB = 900;
+let bulletGeo = null, bulletLines = null;
+function initBullets(){
+  if (bulletLines) return;
+  bulletGeo = new THREE.BufferGeometry();
+  bulletGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(MAXB*6), 3));
+  bulletLines = new THREE.LineSegments(bulletGeo, new THREE.LineBasicMaterial({
+    color:0xFFD8A2, transparent:true, opacity:.95,
+    blending:THREE.AdditiveBlending, depthWrite:false }));
+  bulletLines.frustumCulled = false;
+  World.scene.add(bulletLines);
+}
+function fireBullet(pos, quat, baseVel, owner, dmg){
+  if (Game.bullets.length >= MAXB) return;
+  const fwd = FWD.clone().applyQuaternion(quat);
+  const spread = owner === "drone" ? 0.011 : 0.0035;
+  fwd.x += rnd(-spread, spread); fwd.y += rnd(-spread, spread); fwd.z += rnd(-spread, spread);
+  fwd.normalize();
+  Game.bullets.push({
+    p: pos.clone().addScaledVector(fwd, 7),
+    v: fwd.multiplyScalar(CFG.bulletV).add(baseVel),
+    t: CFG.bulletLife, owner, dmg: dmg || CFG.bulletDmg
+  });
+}
+function stepBullets(dt){
+  initBullets();
+  const arr = bulletGeo.attributes.position.array;
+  let n = 0;
+  for (let i = Game.bullets.length - 1; i >= 0; i--){
+    const b = Game.bullets[i];
+    b.t -= dt;
+    const prev = b.p.clone();
+    b.p.addScaledVector(b.v, dt);
+    if (b.t <= 0 || b.p.y < terrainH(b.p.x, b.p.z)){
+      Game.bullets.splice(i,1); continue;
+    }
+    if (b.owner === "me"){
+      let hitSomething = false;
+      for (const [pid, r] of Game.remotes){
+        if (r.st === "down") continue;
+        if (segHit(prev, b.p, r.pos, CFG.hitR)){
+          queueDmg(pid, b.dmg); P.hits++;
+          Boom.at(b.p, 9, .28); hitSomething = true; break;
+        }
+      }
+      if (!hitSomething) for (const d of Game.drones){
+        if (!d.alive) continue;
+        if (segHit(prev, b.p, d.pos, CFG.hitR)){
+          d.hp -= b.dmg; P.hits++; Boom.at(b.p, 9, .28); hitSomething = true;
+          if (d.hp <= 0){ d.alive = false; Boom.at(d.pos, 46, 1.0); onKill(d.name); }
+          break;
+        }
+      }
+      if (hitSomething){ Game.bullets.splice(i,1); continue; }
+    } else if (b.owner === "drone"){
+      if (Game.me.alive && segHit(prev, b.p, Game.me.pos, CFG.hitR)){
+        takeDamage(b.dmg, "Drone"); Boom.at(b.p, 8, .25);
+        Game.bullets.splice(i,1); continue;
+      }
+    }
+    if (n < MAXB){
+      const o = n*6, tail = b.p.clone().addScaledVector(b.v, -0.016);
+      arr[o]   = b.p.x;  arr[o+1] = b.p.y;  arr[o+2] = b.p.z;
+      arr[o+3] = tail.x; arr[o+4] = tail.y; arr[o+5] = tail.z;
+      n++;
+    }
+  }
+  bulletGeo.setDrawRange(0, n*2);
+  bulletGeo.attributes.position.needsUpdate = true;
+}
+/* 선분–구 충돌 */
+const _sa = new THREE.Vector3(), _sb = new THREE.Vector3();
+function segHit(a, b, c, r){
+  _sa.copy(b).sub(a); _sb.copy(c).sub(a);
+  const L2 = _sa.lengthSq(); if (L2 < 1e-6) return _sb.lengthSq() < r*r;
+  const t = clamp(_sb.dot(_sa)/L2, 0, 1);
+  _sa.multiplyScalar(t).add(a);
+  return _sa.distanceToSquared(c) < r*r;
+}
+
+/* ── 미사일 ───────────────────────────────────────────────── */
+function launchMissile(fromPos, fromQuat, baseVel, targetKey, mine){
+  const g = new THREE.Group();
+  const bd = new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,2.6,8),
+    new THREE.MeshStandardMaterial({color:0xC9CFD6, roughness:.4, metalness:.6}));
+  bd.rotation.x = Math.PI/2; g.add(bd);
+  const fl = new THREE.Mesh(new THREE.ConeGeometry(.34, 2.6, 8),
+    new THREE.MeshBasicMaterial({color:0xFFC070, transparent:true, opacity:.9,
+      blending:THREE.AdditiveBlending, depthWrite:false}));
+  fl.rotation.x = -Math.PI/2; fl.position.z = 2.2; g.add(fl);
+  World.scene.add(g);
+  const m = {
+    g, pos: fromPos.clone(), quat: fromQuat.clone(),
+    vel: FWD.clone().applyQuaternion(fromQuat).multiplyScalar(CFG.mslV).add(baseVel),
+    speed: CFG.mslV, t: CFG.mslLife, tgt: targetKey, mine: !!mine, smoke: 0
+  };
+  Game.missiles.push(m);
+  return m;
+}
+function missileTargetPos(key){
+  if (!key) return null;
+  if (key.startsWith("d:")){
+    const d = Game.drones.find(x => x.name === key.slice(2) && x.alive);
+    return d ? d.pos : null;
+  }
+  if (key === "me") return Game.me.alive ? Game.me.pos : null;
+  const r = Game.remotes.get(key);
+  return r && r.st !== "down" ? r.pos : null;
+}
+function stepMissiles(dt){
+  for (let i = Game.missiles.length - 1; i >= 0; i--){
+    const m = Game.missiles[i];
+    m.t -= dt;
+    const tp = missileTargetPos(m.tgt);
+    if (tp){
+      _m4.lookAt(m.pos, tp, UPV); _q1.setFromRotationMatrix(_m4);
+      m.quat.rotateTowards(_q1, CFG.mslTurn * dt);
+    }
+    m.speed = Math.min(CFG.mslVmax, m.speed + CFG.mslAcc*dt);
+    const fwd = FWD.clone().applyQuaternion(m.quat);
+    m.vel.lerp(fwd.multiplyScalar(m.speed), 1 - Math.exp(-7*dt));
+    const prev = m.pos.clone();
+    m.pos.addScaledVector(m.vel, dt);
+    m.g.position.copy(m.pos); m.g.quaternion.copy(m.quat);
+
+    m.smoke -= dt;
+    if (m.smoke <= 0){ m.smoke = .05; Boom.at(m.pos, 4.5, .45); }
+
+    let dead = m.t <= 0 || m.pos.y < terrainH(m.pos.x, m.pos.z);
+    if (!dead && m.mine){
+      for (const [pid, r] of Game.remotes){
+        if (r.st === "down") continue;
+        if (segHit(prev, m.pos, r.pos, 16)){ queueDmg(pid, CFG.mslDmg); Boom.at(m.pos, 54, .9); dead = true; break; }
+      }
+      if (!dead) for (const d of Game.drones){
+        if (!d.alive) continue;
+        if (segHit(prev, m.pos, d.pos, 16)){
+          d.hp -= CFG.mslDmg; Boom.at(m.pos, 54, .9); dead = true;
+          if (d.hp <= 0){ d.alive = false; Boom.at(d.pos, 52, 1.1); onKill(d.name); }
+          break;
+        }
+      }
+    } else if (!dead && !m.mine && m.tgt === "me"){
+      if (Game.me.alive && segHit(prev, m.pos, Game.me.pos, 16)){
+        takeDamage(CFG.mslDmg, m.byCall || "Missile"); Boom.at(m.pos, 54, .9); dead = true;
+      }
+    }
+    if (dead){ World.scene.remove(m.g); Game.missiles.splice(i,1); }
+  }
+}
+
+/* ── 피해 · 격추 ──────────────────────────────────────────── */
+function queueDmg(pid, d){ Game.dmgAcc.set(pid, (Game.dmgAcc.get(pid)||0) + d); }
+function flushDmg(){
+  if (!Game.dmgAcc.size) return;
+  for (const [pid, d] of Game.dmgAcc) Net.send({t:"hit", to:pid, dmg:Math.round(d), by:NETID, call:P.call});
+  Game.dmgAcc.clear();
+}
+Net.on("hit", m => {
+  if (!Game.running || !Game.me || !Game.me.alive) return;
+  takeDamage(m.dmg||0, m.call || "Bandit", m.by);
+});
+function takeDamage(d, byCall, byPid){
+  const me = Game.me; if (!me || !me.alive) return;
+  const ecm = me.mods.ecm || 0;
+  if (ecm && Math.random() < ecm * .35) return;      // ECM 이 일부를 흘린다
+  me.hp -= d;
+  me.lastHitBy = byPid || null; me.lastHitCall = byCall || "Bandit";
+  if (me.hp <= 0){ me.hp = 0; die(byCall, byPid); }
+}
+function die(byCall, byPid){
+  const me = Game.me;
+  me.alive = false; me.respawnAt = now() + CFG.respawn*1000;
+  me.d++; me.streak = 0; P.d++; save();
+  Boom.at(me.pos, 70, 1.4);
+  Game.jet.visible = false;
+  showMsg("Shot down", (byCall ? "Hit by " + byCall + ". " : "") + "Respawn in 5 s.");
+  addFeed(byCall || "—", P.call, true);
+  if (Net.up) Net.send({t:"down", victim:NETID, vcall:P.call, killer:byPid||null, kcall:byCall||null});
+  renderPilot();
+}
+Net.on("down", m => {
+  if (m.victim === NETID) return;
+  addFeed(m.kcall || "—", m.vcall || "??", false);
+  if (m.killer === NETID) creditKill(m.vcall || "bandit");
+});
+function onKill(name){ creditKill(name); addFeed(P.call, name, false); }
+function creditKill(victimName){
+  const me = Game.me;
+  me.k++; me.streak++; P.k++;
+  P.cred += CFG.killCred;
+  if (me.streak > P.streak) P.streak = me.streak;
+  save(); renderPilot();
+  showMsg("Splash", victimName + " · +" + CFG.killCred + " credits", "#0E7050");
+}
+function addFeed(killer, victim, meDown){
+  const box = $("#feed");
+  const d = el("div","f");
+  d.appendChild(el("b","k", esc(killer)));
+  d.appendChild(el("i",null,"▸"));
+  d.appendChild(el("b","v", esc(victim)));
+  box.appendChild(d);
+  while (box.children.length > 5) box.removeChild(box.firstChild);
+  setTimeout(() => { if (d.parentNode) d.parentNode.removeChild(d); }, 7000);
+}
+let msgT = 0;
+function showMsg(big, sub, color){
+  const m = $("#msg");
+  m.querySelector(".big").textContent = big;
+  m.querySelector(".big").style.color = color || "";
+  m.querySelector(".sub").textContent = sub || "";
+  m.classList.remove("hide");
+  msgT = now() + 2600;
+}
+
+/* ── 비행 물리 ────────────────────────────────────────────── */
+const _fwd = new THREE.Vector3(), _dq = new THREE.Quaternion(), _e = new THREE.Euler();
+function stepMe(dt){
+  const me = Game.me;
+
+  if (!me.alive){
+    if (now() >= me.respawnAt){ spawnPoint(me); Game.jet.visible = true; showMsg("Airborne","", "#0E7050"); }
+    return;
+  }
+
+  /* 입력 */
+  let pi = 0, ro = 0, ya = 0;
+  if (K["w"] || K["ArrowUp"])    pi -= 1;
+  if (K["s"] || K["ArrowDown"])  pi += 1;
+  if (K["a"] || K["ArrowLeft"])  ro -= 1;
+  if (K["d"] || K["ArrowRight"]) ro += 1;
+  if (K["q"]) ya -= 1;
+  if (K["e"]) ya += 1;
+  if (touch.sx || touch.sy){ ro += touch.sx; pi += touch.sy; }
+  if (P.ctrl === "mouse" && Mouse.locked){
+    ro += Mouse.x;
+    pi += Mouse.y * (P.invertY ? -1 : 1);
+  }
+
+  if (K["Shift"] || touch.up) me.throttle = Math.min(1, me.throttle + .55*dt);
+  if (K["Control"] || touch.dn) me.throttle = Math.max(0, me.throttle - .55*dt);
+
+  const wantAB = (K["r"] || touch.ab) && me.ab > .02;
+  me.abOn = wantAB;
+  const m = me.mods;
+  me.ab = clamp(me.ab + (wantAB ? -CFG.abDrain : CFG.abFill*(1 + (m.abr||0))) * dt, 0, 1);
+
+  /* 조종 권한: 속도가 낮으면 舵가 먹지 않는다 */
+  const auth = clamp(me.speed/68, .12, 1.15);
+  const tf = 1 + (m.turn||0);
+  _e.set(pi * CFG.pitch * auth * tf * dt, ya * CFG.yaw * auth * dt, -ro * CFG.roll * auth * tf * dt, "XYZ");
+  _dq.setFromEuler(_e);
+  me.quat.multiply(_dq).normalize();
+
+  /* 추력·항력·중력 */
+  _fwd.copy(FWD).applyQuaternion(me.quat);
+  const thr = CFG.thrust * (1 + (m.thr||0)) * (1 + (m.acc||0)) * me.throttle * (me.abOn ? CFG.abMul : 1);
+  const drag = CFG.drag * me.speed * me.speed * (me.abOn ? .96 : 1);
+  me.speed += (thr - drag - G0 * _fwd.y * 1.35) * dt;
+  me.speed = clamp(me.speed, 0, CFG.vmax * (me.abOn ? 1.1 : 1));
+
+  /* 속도 벡터가 기수를 따라간다 + 실속 시 침하 */
+  const grip = 1 - Math.exp(-(3.4 + me.speed*0.05) * dt);
+  me.vel.lerp(_fwd.clone().multiplyScalar(me.speed), grip);
+  const stall = clamp(1 - me.speed/52, 0, 1);
+  if (stall > 0) me.vel.y -= G0 * stall * 2.4 * dt;
+
+  me.pos.addScaledVector(me.vel, dt);
+
+  /* 지형·해면 충돌 */
+  const gh = Math.max(terrainH(me.pos.x, me.pos.z), SEA_Y - 2);
+  if (me.pos.y < gh + 7){
+    Boom.at(me.pos, 74, 1.5);
+    die("Terrain", null);
+    return;
+  }
+  if (me.pos.y > 4200){ me.pos.y = 4200; me.vel.y = Math.min(me.vel.y, 0); }
+
+  /* 교전 구역 */
+  const rad = Math.hypot(me.pos.x, me.pos.z);
+  if (rad > ARENA_R){
+    me.outT += dt;
+    me.warn = me.outT > 8 ? "Out of area · taking damage" : "Out of area";
+    if (me.outT > 8) takeDamage(9*dt, "Out of area");
+  } else { me.outT = 0; me.warn = ""; }
+
+  /* 실속 / 지면 경고 */
+  if (me.speed < 48) me.warn = "Stall";
+  else if (me.pos.y - gh < 190 && me.vel.y < -18) me.warn = "Pull up";
+
+  /* 사격 */
+  me.fireCd -= dt;
+  const firing = (K[" "] || touch.gun || Mouse.gun) && me.ammo > 0;
+  if (firing && me.fireCd <= 0){
+    me.fireCd = 1 / (CFG.rof * (1 + (m.rof||0)));
+    me.ammo--; P.shots++;
+    fireBullet(me.pos, me.quat, me.vel, "me", CFG.bulletDmg);
+  }
+  me.firing = firing ? 1 : 0;
+
+  stepLock(dt);
+  const wantMsl = K["f"] || touch.msl || Mouse.msl;
+  if (wantMsl && !me.mslHeld){
+    me.mslHeld = true;
+    if (me.locked && me.msl > 0){
+      me.msl--;
+      const mm = launchMissile(me.pos, me.quat, me.vel, me.lockTgt, true);
+      mm.byCall = P.call;
+      if (Net.up) Net.send({t:"msl", tgt: me.lockTgt === "me" ? null : me.lockTgt,
+        p:[r1(me.pos.x),r1(me.pos.y),r1(me.pos.z)],
+        q:[r3(me.quat.x),r3(me.quat.y),r3(me.quat.z),r3(me.quat.w)],
+        v:[r1(me.vel.x),r1(me.vel.y),r1(me.vel.z)], call:P.call});
+      Chat.push("ops","", P.call + " — Fox two", true);
+    } else if (me.msl <= 0) showMsg("Winchester","No missiles remaining", "#B62E27");
+  }
+  if (!wantMsl) me.mslHeld = false;
+
+  Game.jet.position.copy(me.pos);
+  Game.jet.quaternion.copy(me.quat);
+  const fl = Game.jet.userData.flame;
+  if (fl) fl.material.opacity = me.throttle * (me.abOn ? .95 : .42);
+  Game.jet.visible = me.alive && Game.view === 0;
+}
+
+/* 미사일 조준 */
+function stepLock(dt){
+  const me = Game.me;
+  _fwd.copy(FWD).applyQuaternion(me.quat);
+  let best = null, bestDot = Math.cos(CFG.lockCone), bestKey = null;
+  const test = (pos, key) => {
+    const to = pos.clone().sub(me.pos); const dist = to.length();
+    if (dist > CFG.lockRange) return;
+    const dot = _fwd.dot(to.normalize());
+    if (dot > bestDot){ bestDot = dot; best = pos; bestKey = key; }
+  };
+  for (const [pid, r] of Game.remotes) if (r.st !== "down") test(r.pos, pid);
+  for (const d of Game.drones) if (d.alive) test(d.pos, "d:" + d.name);
+
+  if (bestKey && bestKey === me.lockTgt){
+    me.lockT += dt;
+    if (me.lockT >= CFG.lockTime && !me.locked){ me.locked = true; }
+  } else {
+    me.lockTgt = bestKey; me.lockT = 0; me.locked = false;
+  }
+  if (!bestKey){ me.lockTgt = null; me.lockT = 0; me.locked = false; }
+}
+
+Net.on("msl", m => {
+  if (!m.p) return;
+  const pos = new THREE.Vector3(m.p[0], m.p[1], m.p[2]);
+  const q = new THREE.Quaternion(m.q[0], m.q[1], m.q[2], m.q[3]);
+  const v = new THREE.Vector3(m.v[0], m.v[1], m.v[2]);
+  const mm = launchMissile(pos, q, v, m.tgt === NETID || m.tgt == null ? null : m.tgt, false);
+  mm.byCall = m.call;
+  if (m.tgt === NETID){ mm.tgt = "me"; showMsg("Missile", "Launched by " + (m.call||"bandit"), "#B62E27"); }
+});
+
+/* ── 카메라 ───────────────────────────────────────────────── */
+const _cp = new THREE.Vector3(), _cl = new THREE.Vector3();
+let camPos = new THREE.Vector3(), camInit = false;
+function stepCamera(dt){
+  const me = Game.me, cam = World.camera;
+  if (Game.view === 1){
+    _cp.set(0, .95, -1.4).applyQuaternion(me.quat).add(me.pos);
+    cam.position.copy(_cp);
+    cam.quaternion.copy(me.quat);
+    camInit = false;
+    return;
+  }
+  const back = 26 + me.speed*0.055;
+  _cp.set(0, 7.5, back).applyQuaternion(me.quat).add(me.pos);
+  if (!camInit){ camPos.copy(_cp); camInit = true; }
+  camPos.lerp(_cp, 1 - Math.exp(-9*dt));
+  const gh = terrainH(camPos.x, camPos.z) + 5;
+  if (camPos.y < gh) camPos.y = gh;
+  cam.position.copy(camPos);
+  _cl.copy(FWD).applyQuaternion(me.quat).multiplyScalar(120).add(me.pos);
+  cam.up.copy(UPV).applyQuaternion(me.quat);
+  cam.lookAt(_cl);
+}
+
+/* ── 순위 ─────────────────────────────────────────────────── */
+function renderBoard(){
+  const rows = $("#boardRows"); rows.innerHTML = "";
+  const list = [{ call:P.call, k:Game.me.k, d:Game.me.d, me:true }];
+  for (const [pid, r] of Game.remotes)
+    list.push({ call:r.call, k:r.k, d:r.d, me:false });
+  list.sort((a,b) => b.k - a.k || a.d - b.d);
+  list.forEach(x => {
+    const rw = el("div","rw" + (x.me ? " me" : ""));
+    rw.appendChild(el("span","n", esc(x.call)));
+    rw.appendChild(el("span","v num", String(x.k)));
+    rw.appendChild(el("span","v num", String(x.d)));
+    rows.appendChild(rw);
+  });
+}
+
+/* ── 네트워크 송신 ────────────────────────────────────────── */
+const r1 = v => Math.round(v*10)/10, r3 = v => Math.round(v*1000)/1000;
+function myPacket(){
+  const me = Game.me;
+  return {
+    p:[r1(me.pos.x), r1(me.pos.y), r1(me.pos.z)],
+    q:[r3(me.quat.x), r3(me.quat.y), r3(me.quat.z), r3(me.quat.w)],
+    v:[r1(me.vel.x), r1(me.vel.y), r1(me.vel.z)],
+    sp: Math.round(me.speed), hp: Math.round(me.hp),
+    st: me.alive ? "fly" : "down", fr: me.firing || 0, ab: me.abOn ? 1 : 0,
+    k: me.k, d: me.d
+  };
+}
+
+/* 네트워크 송신 — rAF 와 분리한다.
+   백그라운드 탭에서 rAF 는 0Hz 로 멈추지만 setInterval 은 살아 있다.
+   호스트는 모두의 상태를 중계하므로, 호스트가 탭을 옮겼다고 편대 전체가
+   얼어붙으면 안 된다. 시뮬레이션은 멈춰도 중계와 연결은 유지된다. */
+function netTick(){
+  if (!Net.up || !Game.me) return;
+  const pk = myPacket();
+  Net.pumpSnap(pk);
+  Net.pushPres(pk);
+}
+
+/* 창에서 손을 뗀 동안 기체가 멈춘다는 걸 숨기지 않는다 */
+function paintAwayNotice(){
+  const on = document.hidden && Game.running && Net.up;
+  let n = $("#away");
+  if (on && !n){
+    n = el("div","chip");
+    n.id = "away";
+    n.style.cssText = "position:absolute;left:50%;top:14px;transform:translateX(-50%);" +
+      "z-index:19;padding:9px 16px;font-size:12.5px;color:var(--caution);pointer-events:none";
+    n.textContent = "Paused — this tab is in the background. Your aircraft is not flying.";
+    $("#game").appendChild(n);
+  } else if (!on && n){ n.remove(); }
+}
+document.addEventListener("visibilitychange", () => {
+  paintAwayNotice();
+  /* 돌아왔을 때 큰 dt 로 한 프레임에 순간이동하지 않도록 시계를 다시 맞춘다 */
+  if (!document.hidden) Game.last = now();
+});
+
+/* ── 루프 ─────────────────────────────────────────────────── */
+function paintTips(){
+  const t = $("#tips"); if (!t) return;
+  const rows = P.ctrl === "mouse"
+    ? [["Mouse","Stick"],["L / R click","Guns / Missile"],["Z","Centre stick"],
+       ["Shift/Ctrl","Throttle"],["R","Burner"],["T","Radio"],["Tab","Score"],
+       ["C","View"],["Esc","Release, then return"]]
+    : [["W/S","Pitch"],["A/D","Roll"],["Q/E","Yaw"],["Shift/Ctrl","Throttle"],
+       ["R","Burner"],["Space","Guns"],["F","Missile"],["T","Radio"],
+       ["Tab","Score"],["C","View"],["Esc","Return"]];
+  t.innerHTML = "";
+  rows.forEach(([k, v]) => {
+    const sp = el("span");
+    sp.appendChild(el("b", null, esc(k)));
+    sp.appendChild(document.createTextNode(" " + v));
+    t.appendChild(sp);
+  });
+}
+
+function sizeHud(){
+  const dpr = Math.min(devicePixelRatio, 2);
+  Game.dpr = dpr;
+  Game.W = innerWidth; Game.H = innerHeight;
+  Game.hudCv.width = Game.W * dpr; Game.hudCv.height = Game.H * dpr;
+  Game.hud.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener("resize", () => { World.resize(); if (Game.hudCv) sizeHud(); });
+
+function loop(){
+  Game.raf = requestAnimationFrame(loop);
+  const t = now();
+  let dt = (t - Game.last)/1000; Game.last = t;
+  if (dt > .05) dt = .05;
+  if (dt <= 0) return;
+
+  stepMe(dt);
+  syncRemotes(dt);
+  stepDrones(dt);
+  stepBullets(dt);
+  stepMissiles(dt);
+  Boom.step(dt);
+  stepCamera(dt);
+
+  /* 원격 기체의 예광탄 */
+  for (const [pid, r] of Game.remotes){
+    if (r.fr && r.st !== "down" && Math.random() < .55)
+      fireBullet(r.pos, r.quat, r.vel, "remote", 0);
+  }
+
+  Game.dmgT += dt;
+  if (Game.dmgT > .12){ Game.dmgT = 0; flushDmg(); }
+
+  if (msgT && t > msgT){ msgT = 0; $("#msg").classList.add("hide"); }
+  if (Game.showBoard) renderBoard();
+
+  World.renderer.render(World.scene, World.camera);
+  drawHUD();
+}
+</script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   HUD — 조종석 헤드업 디스플레이
+   피치 사다리·속도/고도 테이프·방위 테이프·레이더·조준.
+   단위는 실제 계기대로 KT / FT / G.
+   ═════════════════════════════════════════════════════════════ */
+const HUD_A = "#0B3450", HUD_G = "#0E7050", HUD_R = "#B62E27", HUD_D = "#3A5568";
+const _pv = new THREE.Vector3(), _wu = new THREE.Vector3(), _iq = new THREE.Quaternion();
+
+function proj(p){
+  _pv.copy(p).project(World.camera);
+  return { x:(_pv.x*.5+.5)*Game.W, y:(-_pv.y*.5+.5)*Game.H, vis:_pv.z > -1 && _pv.z < 1 };
+}
+function line(c,a,b,d,e){ c.beginPath(); c.moveTo(a,b); c.lineTo(d,e); c.stroke(); }
+function txt(c,s,x,y,al,size,col){
+  c.font = (size||11) + "px 'IBM Plex Mono', monospace";
+  c.textAlign = al || "left"; c.textBaseline = "middle";
+  c.fillStyle = col || HUD_A; c.fillText(s, x, y);
+}
+
+function drawHUD(){
+  const c = Game.hud, W = Game.W, H = Game.H, me = Game.me;
+  if (!c || !me) return;
+  c.clearRect(0,0,W,H);
+  c.lineWidth = 1.7;
+  c.strokeStyle = HUD_A; c.fillStyle = HUD_A;
+  c.shadowColor = "rgba(255,255,255,.95)"; c.shadowBlur = 4;
+
+  const cx = W/2, cy = H/2;
+  const cam = World.camera;
+
+  /* 자세 */
+  _iq.copy(cam.quaternion).invert();
+  _wu.set(0,1,0).applyQuaternion(_iq);
+  const tilt = Math.atan2(_wu.x, _wu.y);
+  const cf = FWD.clone().applyQuaternion(cam.quaternion);
+  const camPitch = Math.asin(clamp(cf.y, -1, 1)) * 180/Math.PI;
+  const pxDeg = H / cam.fov;
+
+  /* 항공기 자체 값 */
+  const fwd = FWD.clone().applyQuaternion(me.quat);
+  const rgt = RGT.clone().applyQuaternion(me.quat);
+  const upv = UPV.clone().applyQuaternion(me.quat);
+  const bank = -Math.atan2(rgt.y, upv.y) * 180/Math.PI;
+  const aoaP = Math.asin(clamp(fwd.y,-1,1)) * 180/Math.PI;
+  let hdg = (Math.atan2(fwd.x, -fwd.z) * 180/Math.PI + 360) % 360;
+  const kt  = me.speed * KT;
+  const ft  = me.pos.y * FT;
+  const agl = (me.pos.y - Math.max(terrainH(me.pos.x, me.pos.z), 0)) * FT;
+  const vs  = me.vel.y * FT * 60;
+  const gee = 1 + (me.vel.length() * Math.abs(bank) * 0.00055);
+
+  /* ── 피치 사다리 ── */
+  c.save();
+  c.beginPath(); c.rect(cx-235, cy-165, 470, 330); c.clip();
+  c.translate(cx, cy); c.rotate(tilt);
+  c.globalAlpha = 1;
+  for (let d = -80; d <= 80; d += 5){
+    const y = (camPitch - d) * pxDeg;
+    if (Math.abs(y) > 175) continue;
+    const w = d === 0 ? 190 : (d % 10 === 0 ? 92 : 54);
+    c.strokeStyle = d === 0 ? HUD_A : (d > 0 ? HUD_A : HUD_D);
+    c.lineWidth = d === 0 ? 2.1 : 1.5;
+    if (d < 0){ c.setLineDash([9,7]); } else c.setLineDash([]);
+    if (d === 0){
+      line(c, -w, y, -26, y); line(c, 26, y, w, y);
+    } else {
+      line(c, -w, y, -22, y); line(c, 22, y, w, y);
+      const tick = d > 0 ? 7 : -7;
+      line(c, -w, y, -w, y+tick); line(c, w, y, w, y+tick);
+      txt(c, (d>0?"":"") + Math.abs(d), -w-8, y, "right", 10.5, d>0?HUD_A:HUD_D);
+      txt(c, Math.abs(d), w+8, y, "left", 10.5, d>0?HUD_A:HUD_D);
+    }
+  }
+  c.setLineDash([]);
+  c.restore();
+
+  /* ── 뱅크 지시 ── */
+  c.save(); c.translate(cx, cy); c.globalAlpha = .8;
+  c.strokeStyle = HUD_A; c.lineWidth = 1.2;
+  for (const a of [-60,-45,-30,-20,-10,0,10,20,30,45,60]){
+    const r = (a*Math.PI/180) + tilt, R = 152, L = (a%30===0)?9:5;
+    line(c, Math.sin(r)*R, -Math.cos(r)*R, Math.sin(r)*(R+L), -Math.cos(r)*(R+L));
+  }
+  const br = (bank*Math.PI/180*0) + tilt;
+  c.fillStyle = HUD_A; c.beginPath();
+  c.moveTo(Math.sin(br)*143, -Math.cos(br)*143);
+  c.lineTo(Math.sin(br)*143 - 6, -Math.cos(br)*143 + 10);
+  c.lineTo(Math.sin(br)*143 + 6, -Math.cos(br)*143 + 10);
+  c.closePath(); c.fill();
+  c.restore();
+
+  /* ── 기수 십자 ── */
+  c.strokeStyle = HUD_A; c.lineWidth = 2.2; c.globalAlpha = 1;
+  line(c, cx-20, cy, cx-7, cy); line(c, cx+7, cy, cx+20, cy);
+  line(c, cx, cy-20, cx, cy-7); line(c, cx, cy+7, cx, cy+20);
+  c.beginPath(); c.arc(cx, cy, 2.4, 0, 7); c.fill();
+
+  /* ── 속도 벡터(FPM) ── */
+  if (me.vel.lengthSq() > 25){
+    const fp = proj(me.pos.clone().addScaledVector(me.vel.clone().normalize(), 900));
+    if (fp.vis){
+      c.strokeStyle = HUD_G; c.lineWidth = 2;
+      c.beginPath(); c.arc(fp.x, fp.y, 7, 0, 7); c.stroke();
+      line(c, fp.x-7, fp.y, fp.x-16, fp.y);
+      line(c, fp.x+7, fp.y, fp.x+16, fp.y);
+      line(c, fp.x, fp.y-7, fp.x, fp.y-14);
+    }
+  }
+
+  /* ── 속도 테이프 ── */
+  tape(c, cx-232, cy, kt, 20, 5, "KT", -1);
+  /* ── 고도 테이프 ── */
+  tape(c, cx+232, cy, ft, 500, 100, "FT", 1);
+
+  /* 보조 수치 */
+  txt(c, "G " + gee.toFixed(1), cx-232, cy+128, "center", 12, gee > 6 ? HUD_R : HUD_A);
+  txt(c, "AOA " + (aoaP>=0?"+":"") + aoaP.toFixed(0) + "°", cx-232, cy+146, "center", 11, HUD_D);
+  txt(c, "AGL " + Math.max(0,Math.round(agl)).toLocaleString(), cx+232, cy+128, "center", 11,
+      agl < 900 ? HUD_R : HUD_A);
+  txt(c, "VS " + (vs>=0?"+":"") + Math.round(vs).toLocaleString(), cx+232, cy+146, "center", 11, HUD_D);
+
+  /* ── 방위 테이프 ── */
+  c.save();
+  c.beginPath(); c.rect(cx-150, 20, 300, 34); c.clip();
+  c.strokeStyle = HUD_A; c.globalAlpha = .95;
+  for (let d = -60; d <= 60; d += 5){
+    let h = (Math.round(hdg/5)*5 + d + 360) % 360;
+    const x = cx + (d - ((hdg % 5))) * 2.6;
+    const major = h % 30 === 0;
+    line(c, x, 40, x, major ? 30 : 35);
+    if (major){
+      const nm = {0:"N",90:"E",180:"S",270:"W"}[h];
+      txt(c, nm || String(h/10|0).padStart(2,"0"), x, 22, "center", nm?12:10.5, nm?HUD_A:HUD_D);
+    }
+  }
+  c.restore();
+  c.fillStyle = HUD_A;
+  c.beginPath(); c.moveTo(cx, 44); c.lineTo(cx-5, 52); c.lineTo(cx+5, 52); c.closePath(); c.fill();
+  c.strokeStyle = HUD_A; c.lineWidth = 1;
+  c.strokeRect(cx-24, 54, 48, 18);
+  txt(c, String(Math.round(hdg)).padStart(3,"0"), cx, 63.5, "center", 13, HUD_A);
+
+  /* ── 표적 · 조준 ── */
+  const drawTgt = (pos, label, hp, key) => {
+    const p = proj(pos); if (!p.vis) return;
+    const dist = pos.distanceTo(me.pos);
+    const isLock = key === me.lockTgt;
+    const s = clamp(1100/Math.max(dist,60), 9, 40);
+    c.strokeStyle = isLock ? (me.locked ? HUD_R : HUD_A) : HUD_D;
+    c.lineWidth = isLock ? 2.2 : 1.5;
+    c.globalAlpha = isLock ? 1 : .72;
+    c.strokeRect(p.x-s, p.y-s, s*2, s*2);
+    if (isLock && me.locked){
+      c.beginPath(); c.arc(p.x, p.y, s*1.5, 0, 7); c.stroke();
+      txt(c, "LOCK", p.x, p.y - s - 22, "center", 11, HUD_R);
+    }
+    txt(c, label, p.x, p.y + s + 11, "center", 10.5, isLock ? HUD_A : HUD_D);
+    txt(c, (dist/1000).toFixed(1) + "km", p.x, p.y + s + 24, "center", 10, HUD_D);
+    if (hp != null){
+      const bw = s*2, hpf = clamp(hp/100, 0, 1);
+      c.fillStyle = "rgba(255,255,255,.75)"; c.fillRect(p.x-s, p.y-s-8, bw, 3);
+      c.fillStyle = hpf > .5 ? HUD_G : hpf > .22 ? HUD_A : HUD_R;
+      c.fillRect(p.x-s, p.y-s-8, bw*hpf, 3);
+    }
+    c.globalAlpha = 1;
+    /* 리드 조준점 */
+    if (isLock && me.mods.lead && dist < 1400){
+      const rv = Game.remotes.get(key);
+      const tv = rv ? rv.vel : (Game.drones.find(d => "d:"+d.name === key)||{}).vel;
+      if (tv){
+        const tof = dist / CFG.bulletV;
+        const lp = proj(pos.clone().addScaledVector(tv.clone().sub(me.vel), tof));
+        if (lp.vis){
+          c.strokeStyle = HUD_G; c.lineWidth = 1.4;
+          c.beginPath(); c.arc(lp.x, lp.y, 5, 0, 7); c.stroke();
+          c.beginPath(); c.moveTo(lp.x-9, lp.y); c.lineTo(lp.x+9, lp.y); c.stroke();
+        }
+      }
+    }
+  };
+  for (const [pid, r] of Game.remotes) if (r.st !== "down") drawTgt(r.pos, r.call, r.hp, pid);
+  for (const d of Game.drones) if (d.alive) drawTgt(d.pos, d.name, d.hp/55*100, "d:" + d.name);
+
+  /* 조준 진행 */
+  if (me.lockTgt && !me.locked && me.lockT > 0){
+    const k = clamp(me.lockT/CFG.lockTime, 0, 1);
+    c.strokeStyle = HUD_A; c.lineWidth = 2.4; c.globalAlpha = .9;
+    c.beginPath(); c.arc(cx, cy, 34, -Math.PI/2, -Math.PI/2 + k*Math.PI*2); c.stroke();
+    c.globalAlpha = 1;
+  }
+
+  /* ── 좌하단 계기 ── */
+  const bx = 22, by = H - 96;
+  bar(c, bx, by,      120, 9, me.throttle, HUD_A,  "THR " + Math.round(me.throttle*100) + "%");
+  bar(c, bx, by + 26, 120, 9, me.ab,       me.abOn ? HUD_R : HUD_G, "A/B " + Math.round(me.ab*100) + "%");
+  bar(c, bx, by + 52, 120, 9, me.hp/me.hpMax,
+      me.hp/me.hpMax > .4 ? HUD_G : HUD_R, "HULL " + Math.round(me.hp));
+  txt(c, "RDS " + me.ammo, bx, by + 76, "left", 12, me.ammo < 80 ? HUD_R : HUD_A);
+  txt(c, "MSL " + "◆".repeat(me.msl) + "◇".repeat(Math.max(0, me.mslMax - me.msl)),
+      bx + 74, by + 76, "left", 12, me.msl ? HUD_A : HUD_D);
+
+  /* ── 레이더 ── */
+  const rr = 62, rx = cx, ry = H - rr - 58;
+  const range = 2000 * (1 + (me.mods.rdr || 0));
+  c.globalAlpha = .96;
+  c.strokeStyle = "rgba(11,52,80,.45)"; c.fillStyle = "rgba(255,255,255,.66)"; c.lineWidth = 1;
+  c.beginPath(); c.arc(rx, ry, rr, 0, 7); c.fill(); c.stroke();
+  c.beginPath(); c.arc(rx, ry, rr*.5, 0, 7); c.stroke();
+  line(c, rx-rr, ry, rx+rr, ry); line(c, rx, ry-rr, rx, ry+rr);
+  const hr = -hdg * Math.PI/180;
+  const blip = (pos, col) => {
+    const dx = pos.x - me.pos.x, dz = pos.z - me.pos.z;
+    const d = Math.hypot(dx,dz); if (d > range) return;
+    const a = Math.atan2(dx, -dz) + hr;
+    const rad = d/range*rr;
+    const px = rx + Math.sin(a)*rad, py = ry - Math.cos(a)*rad;
+    c.fillStyle = col; c.beginPath(); c.arc(px, py, 3.2, 0, 7); c.fill();
+    const dy = pos.y - me.pos.y;
+    if (Math.abs(dy) > 120){
+      c.strokeStyle = col; c.lineWidth = 1;
+      line(c, px, py, px, py + (dy > 0 ? -7 : 7));
+    }
+  };
+  for (const [pid, r] of Game.remotes) if (r.st !== "down") blip(r.pos, HUD_R);
+  for (const d of Game.drones) if (d.alive) blip(d.pos, "#4C6479");
+  c.fillStyle = HUD_G;
+  c.beginPath(); c.moveTo(rx, ry-5); c.lineTo(rx-4, ry+4); c.lineTo(rx+4, ry+4); c.closePath(); c.fill();
+  txt(c, (range/1000).toFixed(1) + "km", rx, ry + rr + 12, "center", 10, HUD_D);
+  c.globalAlpha = 1;
+
+  /* ── 가상 스틱 (마우스 조종) ── */
+  if (P.ctrl === "mouse"){
+    const R = 104;
+    c.globalAlpha = .5; c.strokeStyle = HUD_D; c.lineWidth = 1;
+    c.beginPath(); c.arc(cx, cy, R, 0, 7); c.stroke();
+    c.globalAlpha = 1;
+    if (Mouse.locked){
+      const sx = cx + Mouse.x * R, sy = cy + Mouse.y * R;
+      c.strokeStyle = HUD_G; c.lineWidth = 2;
+      c.beginPath(); c.arc(sx, sy, 6, 0, 7); c.stroke();
+      c.beginPath(); c.moveTo(cx, cy); c.lineTo(sx, sy);
+      c.globalAlpha = .4; c.stroke(); c.globalAlpha = 1;
+    } else {
+      txt(c, "CLICK TO CAPTURE POINTER", cx, cy + R + 18, "center", 12, HUD_D);
+    }
+  }
+
+  /* ── 경고 ── */
+  if (me.warn){
+    const blink = (now()/260 | 0) % 2 === 0;
+    if (blink){
+      c.strokeStyle = HUD_R; c.lineWidth = 1.6;
+      c.strokeRect(cx-88, cy+184, 176, 28);
+      txt(c, me.warn.toUpperCase(), cx, cy+198, "center", 15, HUD_R);
+    }
+  }
+  if (!me.alive){
+    const left = Math.max(0, (me.respawnAt - now())/1000);
+    txt(c, "RESPAWN " + left.toFixed(1) + "s", cx, cy+150, "center", 15, HUD_D);
+  }
+
+  /* 우하단 상태 */
+  txt(c, Game.solo ? "SOLO TRAINING" : (Net.up ? "SQUAWK " + Net.squawk : "OFFLINE"),
+      W-22, H-42, "right", 11.5, HUD_D);
+  txt(c, me.k + " KILLS · " + me.d + " LOST", W-22, H-25, "right", 12, HUD_A);
+}
+
+/* 세로 테이프 */
+function tape(c, x, cy, val, major, minor, unit, side){
+  const h = 108, half = h;
+  c.save();
+  c.beginPath(); c.rect(x-40, cy-half, 80, half*2); c.clip();
+  c.strokeStyle = HUD_D; c.globalAlpha = .92; c.lineWidth = 1.4;
+  const perUnit = 108 / (major*2.2);
+  const start = Math.floor((val - major*2.4)/minor)*minor;
+  for (let v = start; v <= val + major*2.4; v += minor){
+    const y = cy + (val - v)*perUnit;
+    if (Math.abs(y-cy) > half) continue;
+    const isMaj = Math.abs(v % major) < 1e-6;
+    const len = isMaj ? 13 : 7;
+    if (side < 0) line(c, x+26, y, x+26-len, y); else line(c, x-26, y, x-26+len, y);
+    if (isMaj && v >= 0)
+      txt(c, String(Math.round(v)), side < 0 ? x+8 : x-8, y, side < 0 ? "right" : "left", 11, HUD_D);
+  }
+  c.restore();
+  c.globalAlpha = 1;
+  /* 현재값 상자 */
+  c.strokeStyle = HUD_A; c.fillStyle = "rgba(255,255,255,.82)"; c.lineWidth = 1.4;
+  const bw = 62, bh = 22;
+  c.fillRect(x-bw/2, cy-bh/2, bw, bh);
+  c.strokeRect(x-bw/2, cy-bh/2, bw, bh);
+  txt(c, String(Math.round(val)), x + (side<0 ? 22 : 22), cy, "right", 14, HUD_A);
+  txt(c, unit, x, cy - bh/2 - 12, "center", 10, HUD_D);
+}
+
+/* 가로 막대 */
+function bar(c, x, y, w, h, frac, col, label){
+  c.globalAlpha = .95;
+  c.fillStyle = "rgba(255,255,255,.74)"; c.fillRect(x, y, w, h);
+  c.fillStyle = col; c.fillRect(x, y, w*clamp(frac,0,1), h);
+  c.strokeStyle = "rgba(18,67,95,.32)"; c.lineWidth = 1; c.strokeRect(x, y, w, h);
+  txt(c, label, x + w + 9, y + h/2, "left", 11, col);
+  c.globalAlpha = 1;
+}
+</script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   격납고 — 기체 모델 등록소, 외부 모델 반입(GLB/GLTF/OBJ), 미리보기
+
+   기체 하나가 지켜야 하는 계약:
+     · 기수는 로컬 -Z, 위는 +Y
+     · 전장 약 13유닛
+     · g.userData.flame 에 Mesh 하나 — 게임이 매 프레임 그 material.opacity 로
+       엔진 출력을 표현한다(프로펠러기라면 회전 디스크로 읽으면 된다)
+   ═════════════════════════════════════════════════════════════ */
+const JET_LEN = 13;
+
+/* 기종 등록소. 값은 {nameKo, note, build(colorHex)} */
+const JETS = {
+  delta: { nameKo:"Delta Jet",        note:"Standard issue · balanced",  build: buildJetDelta },
+  prop:  { nameKo:"Piston Fighter",   note:"WWII inline · spinner disc", build: buildJetProp  },
+  bipe:  { nameKo:"Biplane Aerobat",  note:"Two wings · open cockpit",   build: buildJetBipe  },
+  void:  { nameKo:"Orbital Interceptor", note:"Hex core · ring cage",    build: buildJetVoid  }
+};
+function jetDef(key){ return JETS[key] || JETS.delta; }
+
+/* ── 외부 모델 보관 (IndexedDB) ───────────────────────────── */
+const IDB = {
+  _p:null,
+  open(){
+    if (this._p) return this._p;
+    this._p = new Promise((res, rej) => {
+      const q = indexedDB.open("squawk", 1);
+      q.onupgradeneeded = () => { try{ q.result.createObjectStore("models"); }catch(e){} };
+      q.onsuccess = () => res(q.result);
+      q.onerror   = () => rej(q.error);
+    }).catch(() => null);
+    return this._p;
+  },
+  async put(k, v){
+    const db = await this.open(); if (!db) return false;
+    return new Promise(res => {
+      const t = db.transaction("models", "readwrite");
+      t.objectStore("models").put(v, k);
+      t.oncomplete = () => res(true); t.onerror = () => res(false);
+    });
+  },
+  async get(k){
+    const db = await this.open(); if (!db) return null;
+    return new Promise(res => {
+      const t = db.transaction("models", "readonly");
+      const q = t.objectStore("models").get(k);
+      q.onsuccess = () => res(q.result || null); q.onerror = () => res(null);
+    });
+  }
+};
+
+/* ── 로더 ─────────────────────────────────────────────────── */
+const Models = {
+  cache:new Map(),        // 소스키 -> THREE.Object3D (원본. 쓸 때 클론한다)
+
+  _parse(buf, ext){
+    return new Promise((res, rej) => {
+      if (ext === "obj"){
+        if (!THREE.OBJLoader) return rej(new Error("The OBJ loader did not load."));
+        try {
+          const txt = new TextDecoder().decode(buf);
+          res(new THREE.OBJLoader().parse(txt));
+        } catch(e){ rej(e); }
+        return;
+      }
+      if (!THREE.GLTFLoader) return rej(new Error("The GLTF loader did not load."));
+      new THREE.GLTFLoader().parse(buf, "", g => res(g.scene || g.scenes[0]), rej);
+    });
+  },
+
+  async fromBuffer(key, buf, ext){
+    const obj = await this._parse(buf, ext);
+    if (!obj) throw new Error("That file contains no model.");
+    let meshes = 0;
+    obj.traverse(o => { if (o.isMesh) meshes++; });
+    if (!meshes) throw new Error("No meshes in that file. Check that geometry was exported.");
+    this.cache.set(key, obj);
+    return obj;
+  },
+
+  async fromUrl(url){
+    if (this.cache.has(url)) return this.cache.get(url);
+    const ext = (url.split("?")[0].split(".").pop() || "").toLowerCase();
+    if (!["glb","gltf","obj"].includes(ext))
+      throw new Error("Only .glb, .gltf and .obj can be read.");
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("Fetch failed (" + r.status + "). Check the path.");
+    const buf = await r.arrayBuffer();
+    if (ext === "gltf"){
+      /* .gltf 는 텍스처·bin 이 따로 있어 상대경로 해석이 필요하다 */
+      const base = url.slice(0, url.lastIndexOf("/") + 1);
+      return new Promise((res, rej) => {
+        new THREE.GLTFLoader().setPath(base).load(url.slice(base.length),
+          g => { const o = g.scene || g.scenes[0]; this.cache.set(url, o); res(o); }, null, rej);
+      });
+    }
+    return this.fromBuffer(url, buf, ext);
+  }
+};
+
+/* ── 반입 모델을 게임 규격에 맞춘다 ────────────────────────── */
+const _bx = new THREE.Box3(), _sz = new THREE.Vector3(), _ct = new THREE.Vector3();
+function fitModel(src, cfg, colorHex){
+  const g = new THREE.Group();
+  const pivot = new THREE.Group();
+  const inner = src.clone(true);
+
+  /* 클론은 재질을 공유한다. 도장색을 입히려면 반드시 복제해야
+     같은 모델을 쓰는 다른 기체까지 물들지 않는다. */
+  inner.traverse(o => {
+    if (!o.isMesh || !o.material) return;
+    const dup = m => { const c = m.clone(); if (cfg.tint) c.color = new THREE.Color(colorHex); return c; };
+    o.material = Array.isArray(o.material) ? o.material.map(dup) : dup(o.material);
+    o.castShadow = o.receiveShadow = false;
+  });
+
+  pivot.add(inner);
+  pivot.rotation.y = ((cfg.yaw || 0) * Math.PI) / 180;
+  if (cfg.pitch) pivot.rotation.x = (cfg.pitch * Math.PI) / 180;
+  g.add(pivot);
+
+  /* 가장 긴 변을 기준으로 전장을 맞춘다 */
+  g.updateMatrixWorld(true);
+  _bx.setFromObject(g); _bx.getSize(_sz);
+  const longest = Math.max(_sz.x, _sz.y, _sz.z) || 1;
+  pivot.scale.setScalar((JET_LEN * (cfg.scale || 1)) / longest);
+
+  /* 원점(무게중심)으로 끌어온다 — 회전축이 기체 한가운데여야 한다 */
+  g.updateMatrixWorld(true);
+  _bx.setFromObject(g); _bx.getCenter(_ct);
+  pivot.position.sub(_ct);
+
+  /* 후연 — 기체 뒤끝 바로 뒤에.
+     굵기는 반드시 '정규화된' 치수로 잰다. 원본이 밀리미터 단위로 만들어졌을 수도 있다. */
+  g.updateMatrixWorld(true);
+  _bx.setFromObject(g); _bx.getSize(_sz);
+  const back = isFinite(_bx.max.z) ? _bx.max.z : 5;
+  const rad  = clamp(Math.min(_sz.x, _sz.y) * .07, .35, 1.1);
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(rad, 4.0, 10),
+    new THREE.MeshBasicMaterial({ color:0x9AD3FF, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false }));
+  flame.rotation.x = -Math.PI/2;
+  flame.position.z = back + 2.0;
+  g.add(flame);
+  g.userData.flame = flame;
+  g.userData.custom = true;
+  return g;
+}
+
+/* ── 기체 생성 진입점 ─────────────────────────────────────── */
+function buildJet(colorHex, key, cfg){
+  key = key || "delta";
+  if (key === "custom"){
+    const c = cfg || P.custom;
+    const src = c && Models.cache.get(c.src);
+    if (src){
+      try { return fitModel(src, c, colorHex); }
+      catch(e){ console.warn("custom model failed to build", e); }
+    }
+    return buildJetDelta(colorHex);          // 아직 안 읽혔으면 기본기로
+  }
+  return jetDef(key).build(colorHex);
+}
+
+/* ── 카드 미리보기 ────────────────────────────────────────
+   WebGL 컨텍스트는 브라우저당 개수 제한이 있다. 렌더러 하나로
+   그린 뒤 각 카드의 2D 캔버스에 복사한다. */
+const Preview = {
+  r:null, scene:null, cam:null, W:240, H:180,
+  init(){
+    if (this.r) return true;
+    try {
+      const cv = document.createElement("canvas");
+      cv.width = this.W * 2; cv.height = this.H * 2;
+      this.r = new THREE.WebGLRenderer({ canvas:cv, antialias:true, alpha:true });
+      this.r.setPixelRatio(2);
+      this.r.setSize(this.W, this.H, false);
+      this.r.outputEncoding = THREE.sRGBEncoding;
+      this.scene = new THREE.Scene();
+      this.scene.add(new THREE.HemisphereLight(0xF2F8FF, 0x9FB6C8, 1.15));
+      const d = new THREE.DirectionalLight(0xFFFFFF, 1.15);
+      d.position.set(-3, 4, 5); this.scene.add(d);
+      const d2 = new THREE.DirectionalLight(0xBFDCF5, .5);
+      d2.position.set(4, -1, -4); this.scene.add(d2);
+      this.cam = new THREE.PerspectiveCamera(34, this.W/this.H, .1, 400);
+      this.cam.position.set(15, 8.5, 17);
+      this.cam.lookAt(0, 0, 0);
+      return true;
+    } catch(e){ this.r = null; return false; }
+  },
+  shot(group, target2d){
+    if (!this.init() || !group) return;
+    this.scene.add(group);
+    const fl = group.userData.flame;
+    const keep = fl ? fl.material.opacity : 0;
+    if (fl) fl.material.opacity = .5;
+    try {
+      this.r.render(this.scene, this.cam);
+      const c = target2d.getContext("2d");
+      target2d.width = this.W * 2; target2d.height = this.H * 2;
+      c.clearRect(0, 0, target2d.width, target2d.height);
+      c.drawImage(this.r.domElement, 0, 0, target2d.width, target2d.height);
+    } catch(e){}
+    if (fl) fl.material.opacity = keep;
+    this.scene.remove(group);
+  }
+};
+
+/* ── 격납고 화면 ──────────────────────────────────────────── */
+function openHangar(){
+  const body = el("div");
+  body.style.cssText = "display:flex;flex-direction:column;gap:18px";
+
+  const info = el("div","note",
+    "Your flight sees whatever airframe you pick here. Import your own model below.");
+  body.appendChild(info);
+
+  const bay = el("div","bay");
+  body.appendChild(bay);
+
+  const drawBay = () => {
+    bay.innerHTML = "";
+    const keys = Object.keys(JETS);
+    if (P.custom && Models.cache.get(P.custom.src)) keys.push("custom");
+    keys.forEach(k => {
+      const def = k === "custom"
+        ? { nameKo: P.custom.name || "My airframe",
+            note: P.custom.shared ? "Bundled · seen by the flight" : "This browser only" }
+        : jetDef(k);
+      const card = el("button", "bayc" + (P.jet === k ? " on" : ""));
+      card.type = "button";
+      const cv = el("canvas"); card.appendChild(cv);
+      card.appendChild(el("b", null, esc(def.nameKo)));
+      card.appendChild(el("i", null, esc(def.note || "")));
+      if (k === "custom") card.appendChild(el("span","mine","Imported"));
+      card.addEventListener("click", () => {
+        P.jet = k; save(); renderPilot(); swapMyJet(); drawBay();
+      });
+      bay.appendChild(card);
+      /* 카드가 붙은 뒤에 그려야 캔버스 크기가 잡힌다 */
+      setTimeout(() => {
+        try { Preview.shot(buildJet(new THREE.Color(P.color).getHex(), k), cv); } catch(e){}
+      }, 0);
+    });
+  };
+  drawBay();
+
+  /* ── 반입 ── */
+  body.appendChild(el("div","lbl","Import your own model"));
+  const drop = el("div","drop",
+    "<b>Drop a .glb, .gltf or .obj file here</b>" +
+    "Dropped files stay in <b>this browser only</b>. To let your flight see it too, use the path field below.");
+  body.appendChild(drop);
+
+  const pickBtn = mkBtn("Choose file","", () => fileInput.click());
+  pickBtn.classList.add("sm");
+  const fileInput = el("input"); fileInput.type = "file";
+  fileInput.accept = ".glb,.gltf,.obj"; fileInput.style.display = "none";
+  body.appendChild(fileInput); body.appendChild(pickBtn);
+
+  const urlRow = el("div"); urlRow.style.cssText = "display:flex;gap:8px;align-items:flex-end";
+  const urlF = el("div","field"); urlF.style.flex = "1";
+  urlF.appendChild(el("span","lbl","Path to a file bundled with the site"));
+  const urlI = el("input","inp");
+  urlI.placeholder = "myjet.glb";
+  urlI.value = (P.custom && P.custom.shared && P.custom.src) || "";
+  urlF.appendChild(urlI);
+  urlRow.appendChild(urlF);
+  urlRow.appendChild(mkBtn("Load","", () => loadFromUrl(urlI.value.trim())));
+  body.appendChild(urlRow);
+  body.appendChild(el("div","note",
+    "Put the model file next to index.html and type its name. Anyone who opens your link " +
+    "downloads the same file, so the whole flight sees the same airframe."));
+
+  /* ── 자세 보정 ── */
+  const tune = el("div","brief"); tune.classList.add("hide");
+  tune.appendChild(el("div","lbl","Orientation"));
+  tune.appendChild(el("div","note",
+    "Every exporter points the nose down a different axis. Rotate until the nose faces " +
+    "<b>toward the lower left</b> — that is the direction of flight."));
+
+  const prevCv = el("canvas");
+  prevCv.style.cssText = "width:100%;max-width:280px;aspect-ratio:4/3;border-radius:9px;" +
+    "background:linear-gradient(170deg,#EDF6FE,#D9EBFA);display:block";
+  tune.appendChild(prevCv);
+
+  const ctl = el("div"); ctl.style.cssText = "display:flex;flex-direction:column;gap:10px";
+  const mkRange = (label, min, max, step, val, fn) => {
+    const w = el("div"); w.style.cssText = "display:flex;align-items:center;gap:10px";
+    const l = el("span","lbl", label); l.style.width = "62px";
+    const r = el("input"); r.type = "range"; r.min = min; r.max = max; r.step = step;
+    r.value = val; r.style.flex = "1"; r.style.accentColor = "#3E96DC";
+    const o = el("span","num"); o.style.cssText = "width:52px;text-align:right;font-size:12px";
+    o.textContent = val;
+    r.addEventListener("input", () => { o.textContent = r.value; fn(parseFloat(r.value)); });
+    w.appendChild(l); w.appendChild(r); w.appendChild(o);
+    return w;
+  };
+
+  let draft = null;
+  const repaint = () => {
+    if (!draft) return;
+    try { Preview.shot(fitModel(Models.cache.get(draft.src), draft,
+      new THREE.Color(P.color).getHex()), prevCv); } catch(e){}
+  };
+  ctl.appendChild(mkRange("Yaw",   0, 359, 1, 0, v => { draft.yaw = v; repaint(); }));
+  ctl.appendChild(mkRange("Pitch", -90, 90, 1, 0, v => { draft.pitch = v; repaint(); }));
+  ctl.appendChild(mkRange("Scale", .4, 2.2, .05, 1, v => { draft.scale = v; repaint(); }));
+
+  const tintW = el("label");
+  tintW.style.cssText = "display:flex;gap:9px;align-items:center;font-size:13px;color:var(--ink2);cursor:pointer";
+  const tintC = el("input"); tintC.type = "checkbox";
+  tintC.addEventListener("change", () => { draft.tint = tintC.checked; repaint(); });
+  tintW.appendChild(tintC);
+  tintW.appendChild(el("span",null,"Paint the whole airframe in my pilot colour"));
+  ctl.appendChild(tintW);
+  tune.appendChild(ctl);
+
+  const applyRow = el("div"); applyRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
+  applyRow.appendChild(mkBtn("Apply","pri", () => {
+    P.custom = draft; P.jet = "custom"; save();
+    renderPilot(); swapMyJet(); drawBay();
+    sysLog("Airframe changed to " + (draft.name || "your model") + ".");
+    tune.classList.add("hide");
+  }));
+  tune.appendChild(applyRow);
+  body.appendChild(tune);
+
+  const status = el("div","note"); body.appendChild(status);
+  const fail = m => { status.innerHTML = ""; status.appendChild(el("span",null,"⚠ " + m));
+                      status.style.color = "var(--bad)"; };
+  const okmsg = m => { status.textContent = m; status.style.color = "var(--good)"; };
+
+  function beginTune(srcKey, name, shared){
+    draft = { src:srcKey, name, shared:!!shared, yaw:0, pitch:0, scale:1, tint:false };
+    tune.classList.remove("hide");
+    tintC.checked = false;
+    Array.from(ctl.querySelectorAll("input[type=range]")).forEach((r,i) => {
+      r.value = i === 2 ? 1 : 0;
+      r.parentNode.lastChild.textContent = r.value;
+    });
+    repaint();
+    okmsg(name + " loaded. Set the nose direction, then apply.");
+  }
+
+  async function loadFromUrl(u){
+    if (!u) return fail("Type a file name first.");
+    status.textContent = "Loading…"; status.style.color = "var(--ink2)";
+    try {
+      await Models.fromUrl(u);
+      beginTune(u, u.split("/").pop(), true);
+    } catch(e){ fail(e.message || String(e)); }
+  }
+
+  async function loadFromFile(f){
+    if (!f) return;
+    const ext = (f.name.split(".").pop() || "").toLowerCase();
+    if (!["glb","gltf","obj"].includes(ext)) return fail("Only .glb, .gltf and .obj can be read.");
+    if (f.size > 24 * 1024 * 1024) return fail("That file is over 24 MB.");
+    status.textContent = "Reading…"; status.style.color = "var(--ink2)";
+    try {
+      const buf = await f.arrayBuffer();
+      const key = "local:" + f.name;
+      await Models.fromBuffer(key, buf, ext);
+      await IDB.put("file", { name:f.name, ext, buf });
+      beginTune(key, f.name, false);
+    } catch(e){ fail(e.message || String(e)); }
+  }
+
+  fileInput.addEventListener("change", () => loadFromFile(fileInput.files[0]));
+  ["dragenter","dragover"].forEach(t => drop.addEventListener(t, e => {
+    e.preventDefault(); drop.classList.add("hot"); }));
+  ["dragleave","drop"].forEach(t => drop.addEventListener(t, e => {
+    e.preventDefault(); drop.classList.remove("hot"); }));
+  drop.addEventListener("drop", e => {
+    if (e.dataTransfer && e.dataTransfer.files[0]) loadFromFile(e.dataTransfer.files[0]);
+  });
+
+  openModal("Hangar", body, [mkBtn("Close","",closeModal)]);
+}
+
+/* 내 기체를 씬에서 교체한다 */
+function swapMyJet(){
+  if (!World.ready || !Game.jet) return;
+  World.scene.remove(Game.jet);
+  Game.jet = buildJet(new THREE.Color(P.color).getHex(), P.jet, P.custom);
+  Game.jetKey = myJetKey();
+  Game.jet.visible = !!(Game.running && Game.me && Game.me.alive && Game.view === 0);
+  World.scene.add(Game.jet);
+  if (Net.up) Net.announce();
+}
+
+/* 저장해 둔 반입 모델을 시작할 때 되살린다 */
+async function restoreCustom(){
+  const c = P.custom; if (!c) return;
+  try {
+    if (c.shared) await Models.fromUrl(c.src);
+    else {
+      const rec = await IDB.get("file");
+      if (rec && rec.buf) await Models.fromBuffer(c.src, rec.buf, rec.ext);
+      else return;
+    }
+    if (P.jet === "custom"){ renderPilot(); swapMyJet(); }
+  } catch(e){ /* 파일이 사라졌으면 기본기로 남는다 */ }
+}
+</script>
+<script>
+"use strict";
+/* ── 기동 ───────────────────────────────────────────────── */
+(function boot(){
+  renderPilot();
+  renderFlight();
+  paintLink();
+
+  sysLog("Operations room open. Callsign " + P.call + ".");
+  sysLog("Open a flight to get a four-digit squawk. Only pilots who know it can join.");
+
+  /* 링크에 스쿼크가 실려 있으면 바로 접속 시도 */
+  const h = (location.hash || "").replace("#", "").trim();
+  if (validSquawk(h)){
+    sysLog("Squawk " + h + " came in on the link. Connecting.");
+    setTimeout(() => Net.join(h), 400);
+  }
+
+  restoreCustom();
+
+  addEventListener("beforeunload", () => { save(); try{ Net.teardown(); }catch(e){} });
+  addEventListener("hashchange", () => {
+    const v = (location.hash || "").replace("#", "").trim();
+    if (validSquawk(v) && !Net.up) Net.join(v);
+  });
+
+  if (!window.THREE) sysLog("Warning: the 3D engine did not load. Check your connection.");
+  if (!window.Peer)  sysLog("Warning: the peer-to-peer module did not load. Solo training only.");
+})();
+</script>
+</body>
+</html>
