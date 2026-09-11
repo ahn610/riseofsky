@@ -94,16 +94,13 @@ button{cursor:pointer;background:none;border:none}
 
 /* 무대 — 가운데는 비워 둔다. 거기에 3D 기체가 선다. */
 #stage{position:relative;flex:1;display:grid;
-  grid-template-columns:250px minmax(0,1fr) 292px;min-height:0;gap:0}
-/* 레일의 어둠이 가운데로 번져 나가 경계선을 지운다 */
-#stage::before,#stage::after{content:"";position:absolute;top:0;bottom:0;width:34px;
-  pointer-events:none;z-index:1}
-#stage::before{left:250px;
-  background:linear-gradient(to right,rgba(10,10,10,.86),rgba(10,10,10,0))}
-#stage::after{right:292px;
-  background:linear-gradient(to left,rgba(10,10,10,.86),rgba(10,10,10,0))}
+  grid-template-columns:minmax(0,1fr) 372px;min-height:0;gap:0}
 .rail{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;
-  background:rgba(10,10,10,.86)}
+  background:linear-gradient(to left,
+    #0A0A0A 0%, #0A0A0A 70%,
+    rgba(10,10,10,.62) 82%, rgba(10,10,10,.24) 92%, rgba(10,10,10,0) 100%)}
+/* 글자는 불투명한 쪽에만 앉힌다 — 흐려지는 104px 는 비워 둔다 */
+.rail .pnl{padding-left:104px}
 .pnl{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s4);
   border-bottom:1px solid var(--line);min-height:0}
 .pnl:last-child{border-bottom:none}
@@ -151,6 +148,34 @@ button{cursor:pointer;background:none;border:none}
   letter-spacing:-.015em;line-height:1.2}
 .plate span{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
   color:var(--ink3);margin-top:4px}
+
+/* 햄버거 */
+.burger{position:relative;display:flex;flex-direction:column;justify-content:center;
+  gap:4px;width:32px;height:32px;flex:0 0 auto;border:1px solid var(--line2)}
+.burger i{display:block;height:1px;width:15px;margin:0 auto;background:var(--ink);
+  transition:background .12s}
+.burger:hover{border-color:var(--red)}
+.burger:hover i,.burger.on i{background:var(--red)}
+.burger.on{border-color:var(--red)}
+.burger.alert::after{content:"";position:absolute;top:-3px;right:-3px;width:5px;height:5px;
+  background:var(--red)}
+
+/* 서랍 — 닫혀 있으면 화면에 존재하지 않는다 */
+#drawer{position:fixed;inset:0;z-index:40;display:flex;pointer-events:none}
+#drawer.hide{display:none!important}
+#drawer .scrim{position:absolute;inset:0;background:rgba(4,4,4,.42);pointer-events:auto}
+#drawer .dw{position:relative;width:min(380px,92vw);height:100%;pointer-events:auto;
+  display:flex;flex-direction:column;overflow:hidden;
+  background:linear-gradient(to right,
+    #0A0A0A 0%, #0A0A0A 70%,
+    rgba(10,10,10,.62) 82%, rgba(10,10,10,.24) 92%, rgba(10,10,10,0) 100%)}
+#drawer .dwhd{flex:0 0 auto;display:flex;align-items:center;gap:10px;height:58px;
+  padding:0 104px 0 var(--s5);border-bottom:1px solid var(--line)}
+#drawer .dwhd h2{margin:0;font-size:10px;font-weight:500;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink3)}
+#drawer .dwhd .rule{flex:1}
+#drawer .dwin{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+#drawer .pnl{padding-right:104px}
 
 /* 파일럿 */
 .dogtag{padding:var(--s4);border:1px solid var(--line2);background:rgba(255,255,255,.035);
@@ -432,8 +457,8 @@ button{cursor:pointer;background:none;border:none}
 /* ══ 반응형 ════════════════════════════════════════════════ */
 @media (max-width:1100px){
   #stage{grid-template-columns:1fr;overflow-y:auto}
-  #stage::before,#stage::after{display:none}
   .rail{background:rgba(10,10,10,.9)}
+  .rail .pnl{padding-left:var(--s4)}
   .center{min-height:46vh}
   .grid{grid-template-columns:1fr;overflow-y:auto}
   .col{min-height:auto;border-right:none;border-bottom:1px solid var(--line)}
@@ -471,6 +496,8 @@ button{cursor:pointer;background:none;border:none}
 <!-- ══════════════ 작전실 ══════════════ -->
 <div id="ops">
   <div class="topbar">
+    <button class="burger" id="bMenu" type="button" aria-label="Menu">
+      <i></i><i></i><i></i></button>
     <div class="brand"><b>Rise Of Sky</b><span>Squawk</span></div>
     <div class="stat"><span class="lbl">Credits</span><b id="tCred" class="num">0</b></div>
     <div class="stat"><span class="lbl">Kills / Losses</span><b id="tKd" class="num">0 / 0</b></div>
@@ -479,8 +506,20 @@ button{cursor:pointer;background:none;border:none}
   </div>
 
   <div id="stage">
-    <!-- 왼쪽 — 기체에 관한 것 -->
+    <!-- 가운데 — 3D 기체가 서는 자리 -->
+    <main class="center">
+      <div class="plate" id="dPlate"></div>
+      <div id="flightPane"></div>
+    </main>
+
+    <!-- 오른쪽 — 이름 · 기체 · 인벤토리, 이것만 -->
     <aside class="rail">
+      <section class="pnl">
+        <div class="cs">
+          <b id="dCall">&mdash;</b>
+          <button id="bRename" type="button">Change callsign</button>
+        </div>
+      </section>
       <section class="pnl">
         <h3>Airframe<span class="rule"></span></h3>
         <div id="dJet"></div>
@@ -492,29 +531,25 @@ button{cursor:pointer;background:none;border:none}
         <div id="dBag"></div>
       </section>
     </aside>
+  </div>
+</div>
 
-    <!-- 가운데 — 3D 기체가 서는 자리. 조작부는 아래에 -->
-    <main class="center">
-      <div class="plate" id="dPlate"></div>
-      <div id="flightPane"></div>
-    </main>
-
-    <!-- 오른쪽 — 파일럿과 교신 -->
-    <aside class="rail">
+<!-- 서랍 — 파일럿 기록 · 조종 · 교신 -->
+<div id="drawer" class="hide">
+  <div class="dw">
+    <div class="dwhd">
+      <h2>Pilot &amp; Comms</h2><span class="rule"></span>
+      <button class="btn sm" id="bDwClose" type="button">Close</button>
+    </div>
+    <div class="dwin">
       <section class="pnl">
-        <h3>Pilot<span class="rule"></span></h3>
-        <div class="dogtag">
-          <div class="cs">
-            <b id="dCall">&mdash;</b>
-            <button id="bRename" type="button">Change callsign</button>
-          </div>
-          <dl class="kv">
-            <dt>Sorties</dt><dd id="dSorties">0</dd>
-            <dt>Kills / Losses</dt><dd id="dKd">0 / 0</dd>
-            <dt>Accuracy</dt><dd id="dAcc">&mdash;</dd>
-            <dt>Best streak</dt><dd id="dStreak">0</dd>
-          </dl>
-        </div>
+        <h3>Record<span class="rule"></span></h3>
+        <dl class="kv">
+          <dt>Sorties</dt><dd id="dSorties">0</dd>
+          <dt>Kills / Losses</dt><dd id="dKd">0 / 0</dd>
+          <dt>Accuracy</dt><dd id="dAcc">&mdash;</dd>
+          <dt>Best streak</dt><dd id="dStreak">0</dd>
+        </dl>
       </section>
       <section class="pnl">
         <h3>Controls<span class="rule"></span></h3>
@@ -531,8 +566,9 @@ button{cursor:pointer;background:none;border:none}
           <button id="bSend" type="button">Send</button>
         </div>
       </section>
-    </aside>
+    </div>
   </div>
+  <div class="scrim"></div>
 </div>
 
 <!-- ══════════════ 비행 ══════════════ -->
@@ -1177,6 +1213,9 @@ const Chat = {
     this.lines.push(line);
     if (this.lines.length > 160) this.lines.shift();
     this.render(); Radio.show(line);
+    if (!line.sys && !Drawer.open){
+      const b = $("#bMenu"); if (b) b.classList.add("alert");
+    }
   },
   render(){
     const box = $("#opsLog");
@@ -1211,6 +1250,27 @@ const Radio = {
     setTimeout(() => { if (d.parentNode) d.parentNode.removeChild(d); }, 14000);
   }
 };
+
+/* ── 서랍 ── */
+const Drawer = {
+  get open(){ return !$("#drawer").classList.contains("hide"); },
+  show(){
+    $("#drawer").classList.remove("hide");
+    $("#bMenu").classList.add("on");
+    $("#bMenu").classList.remove("alert");
+    const box = $("#opsLog"); if (box) box.scrollTop = box.scrollHeight;
+  },
+  hide(){ $("#drawer").classList.add("hide"); $("#bMenu").classList.remove("on"); },
+  toggle(){ this.open ? this.hide() : this.show(); }
+};
+$("#bMenu").addEventListener("click", () => Drawer.toggle());
+$("#bDwClose").addEventListener("click", () => Drawer.hide());
+$("#drawer").addEventListener("mousedown", e => {
+  if (e.target.classList.contains("scrim")) Drawer.hide();
+});
+addEventListener("keydown", e => {
+  if (e.key === "Escape" && !Game.running && Drawer.open) Drawer.hide();
+});
 
 $("#bSend").addEventListener("click", () => {
   const i = $("#opsMsg"); Chat.send(i.value); i.value = "";
