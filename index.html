@@ -122,6 +122,10 @@ button{cursor:pointer;background:none;border:none}
 .center{position:relative;display:flex;flex-direction:column;justify-content:center;
   padding:0 var(--s5) 0 var(--s6);min-height:0;min-width:0;overflow:hidden}
 
+#sysline{width:min(420px,46%);margin-top:8px;font-size:11.5px;line-height:1.5;
+  color:var(--ink2);text-shadow:var(--halo)}
+#sysline::before{content:"";display:inline-block;width:5px;height:5px;
+  background:var(--ink3);margin-right:8px;vertical-align:middle}
 #flightPane{width:min(420px,46%);display:flex;flex-direction:column;gap:var(--s3);
   padding:var(--s5) var(--s5) var(--s4);
   background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
@@ -376,7 +380,8 @@ button{cursor:pointer;background:none;border:none}
 
 /* 메뉴가 떠 있는 동안에는 비행 오버레이를 전부 숨긴다 */
 #game.attract #hud,#game.attract #feed,#game.attract #radio,#game.attract #tips,
-#game.attract #chatin,#game.attract #touch,#game.attract #msg,#game.attract #board{
+#game.attract #chatin,#game.attract #touch,#game.attract #msg,#game.attract #board,
+  #game.attract #askjoin{
   display:none!important}
 
 #radio{left:12px;bottom:112px;width:min(320px,40vw);display:flex;flex-direction:column;
@@ -386,6 +391,11 @@ button{cursor:pointer;background:none;border:none}
 #radio .r b{font-size:10.5px;color:var(--ink);font-weight:500}
 #radio .r.k b{color:var(--ink3);font-weight:400}
 
+#askjoin{left:12px;bottom:176px;display:flex;flex-direction:column;gap:4px;
+  font-size:12px;color:var(--ink);text-shadow:var(--halo)}
+#askjoin .a{padding:2px 0 2px 9px;border-left:2px solid var(--red)}
+#askjoin .a b{font-weight:600}
+#askjoin .a i{font-style:normal;color:var(--ink3);margin-left:8px}
 #feed{right:12px;top:12px;display:flex;flex-direction:column;gap:3px;align-items:flex-end}
 #feed .f{display:flex;align-items:center;gap:6px;padding:2px 0 2px 9px;font-size:11px;
   border-left:2px solid var(--red);color:var(--ink);text-shadow:var(--halo)}
@@ -510,6 +520,7 @@ button{cursor:pointer;background:none;border:none}
     <main class="center">
       <div class="plate" id="dPlate"></div>
       <div id="flightPane"></div>
+      <div id="sysline" class="hide"></div>
     </main>
 
     <!-- 오른쪽 — 이름 · 기체 · 인벤토리, 이것만 -->
@@ -577,6 +588,7 @@ button{cursor:pointer;background:none;border:none}
   <canvas id="hud"></canvas>
 
   <div id="feed" class="ovl"></div>
+  <div id="askjoin" class="ovl hide"></div>
   <div id="radio" class="ovl"></div>
   <div id="msg" class="ovl hide"><div class="big"></div><div class="sub"></div></div>
   <div id="tips" class="ovl">
@@ -962,7 +974,7 @@ const Net = {
         if (ex){ ex.conn = c; ex.jet = m.jet; ex.jetCfg = m.jetCfg; ex.color = m.color; }
         else this.requests.push({pid, call, conn:c, color:m.color, jet:m.jet, jetCfg:m.jetCfg});
         try{ c.send({t:"wait"}); }catch(e){}
-        sysLog(call + " is requesting to join."); renderFlight(); return;
+        sysLog(call + " is requesting to join."); renderFlight(); paintAsk(); return;
       }
       this._admit(c, pid, call, m.color, m.jet, m.jetCfg); return;
     }
@@ -989,14 +1001,14 @@ const Net = {
     const r = this.requests.splice(i,1)[0];
     if (!this.invited.includes(r.call)) this.invited.push(r.call);
     if (r.conn) this._admit(r.conn, r.pid, r.call, r.color, r.jet, r.jetCfg);
-    renderFlight();
+    renderFlight(); paintAsk();
   },
   deny(pid){
     const i = this.requests.findIndex(r => r.pid === pid); if (i < 0) return;
     const r = this.requests.splice(i,1)[0];
     try{ r.conn && r.conn.send({t:"deny", why:"The host declined your request."}); }catch(e){}
     setTimeout(() => { try{ r.conn && r.conn.close(); }catch(e){} }, 400);
-    renderFlight();
+    renderFlight(); paintAsk();
   },
 
   _pidOf(c){ for (const [k,v] of this.conns) if (v === c) return k; return null; },
@@ -1023,13 +1035,14 @@ const Net = {
       return;
     }
     this.teardown();
+    this.lastError = "";
     this.mode = "guest"; this.status = "dialing"; this.squawk = sq;
     sysLog("Dialling squawk " + sq + "…"); paintLink(); renderFlight();
 
     const p = new Peer({ debug:0, config:ICE });
     this.peer = p;
     const fail = why => { this.status = "down"; this.mode = "off";
-      sysLog(why); paintLink(); renderFlight(); };
+      this.lastError = why; sysLog(why); paintLink(); renderFlight(); };
     const t = setTimeout(() => {
       if (this.status === "dialing")
         fail("No answer. Check the squawk, and that the host still has the page open.");
@@ -1207,12 +1220,20 @@ $("#tLink").addEventListener("click", () => { if (Net.up || Net.status === "wait
 /* ── 교신 ── */
 const Chat = {
   lines: [],
+  lastSys: "",
   push(ch, from, text, sys){
     const line = { from, text, sys: !!sys, at: Date.now() };
     this.lines.push(line);
     if (this.lines.length > 160) this.lines.shift();
     this.render(); Radio.show(line);
-    if (!line.sys && !Drawer.open){
+    if (line.sys){
+      /* 작전실에서는 서랍이 닫혀 있고 #radio 도 숨겨진다.
+         마지막 시스템 줄을 가운데 칸 아래에 상시로 남긴다. */
+      this.lastSys = text;
+      const el0 = $("#sysline");
+      if (el0){ el0.textContent = text; el0.classList.remove("hide"); }
+    }
+    if (!Drawer.open){
       const b = $("#bMenu"); if (b) b.classList.add("alert");
     }
   },
@@ -1446,7 +1467,9 @@ function renderFlight(){
     jr.appendChild(inp); jr.appendChild(go);
     pane.appendChild(jr);
 
-    if (NetCheck.state === "local" || NetCheck.state === "blocked")
+    if (Net.lastError)
+      pane.appendChild(el("div","warn", esc(Net.lastError)));
+    else if (NetCheck.state === "local" || NetCheck.state === "blocked")
       pane.appendChild(el("div","warn", esc(NetCheck.detail)));
     else
       pane.appendChild(el("div","note",
@@ -2428,6 +2451,11 @@ addEventListener("keydown", e => {
   if (k === "t"){ openChat(); e.preventDefault(); }
   if (k === "c"){ Game.view = (Game.view + 1) % 2; }
   if (k === "z"){ Mouse.x = 0; Mouse.y = 0; }
+  if ((k === "y" || k === "n") && Net.isHost && Net.requests.length){
+    const r = Net.requests[0];
+    if (k === "y") Net.approve(r.pid); else Net.deny(r.pid);
+    paintAsk();
+  }
   if (k === "Escape"){ endSortie(); }
   if (k === " ") e.preventDefault();
 }, {passive:false});
@@ -2641,6 +2669,7 @@ function spawnPoint(me){
 function startSortie(solo){
   if (Game.running) return;
   Game.solo = !!solo;
+  closeModal(); if (typeof Drawer !== "undefined") Drawer.hide();
   Attract.stop();
   $("#ops").classList.add("off");
   $("#game").classList.remove("off");
@@ -2667,7 +2696,7 @@ function startSortie(solo){
   if (Game.solo || Net.roster.size < 2) spawnDrones(Game.solo ? 4 : 2);
 
   if ("ontouchstart" in window) $("#touch").classList.add("on");
-  paintTips();
+  paintTips(); paintAsk();
 
   P.sorties++; save();
   renderPilot();
@@ -3009,12 +3038,17 @@ function takeDamage(d, byCall, byPid){
   const ecm = me.mods.ecm || 0;
   if (ecm && Math.random() < ecm * .35) return;      // ECM 이 일부를 흘린다
   me.hp -= d;
+  me.noHit = 0; me.rearm = 0;                     // 맞으면 보급이 끊긴다
   me.lastHitBy = byPid || null; me.lastHitCall = byCall || "Bandit";
+  me.hitAt = now();                               // HUD 가 방향을 그린다
+  const src = byPid && Game.remotes.get(byPid);
+  me.hitFrom = src ? src.pos.clone() : null;
   if (me.hp <= 0){ me.hp = 0; die(byCall, byPid); }
 }
 function die(byCall, byPid){
   const me = Game.me;
   me.alive = false; me.respawnAt = now() + CFG.respawn*1000;
+  me.warn = ""; me.warn2 = ""; me.rearm = 0; me.hitAt = 0;
   me.d++; me.streak = 0; P.d++; save();
   Boom.at(me.pos, 105, 1.4);
   Game.jet.visible = false;
@@ -3029,13 +3063,28 @@ Net.on("down", m => {
   if (m.killer === NETID) creditKill(m.vcall || "bandit");
 });
 function onKill(name){ creditKill(name); addFeed(P.call, name, false); }
+/* 전리품 — 격추한 쪽이 제 브라우저에서 굴린다. 패킷을 늘리지 않고,
+   상대 로드아웃도 노출하지 않는다. 드론(onKill)은 여기로 오지 않는다. */
+function salvage(){
+  if (Math.random() > .40) return null;
+  const roll = Math.random();
+  const tier = roll < .60 ? 1 : roll < .92 ? 2 : 3;
+  const pool = Object.keys(PARTS).filter(k => PARTS[k].t === tier);
+  if (!pool.length) return null;
+  const id = pool[(Math.random() * pool.length) | 0];
+  P.bag[id] = (P.bag[id] || 0) + 1;
+  return PARTS[id].n;
+}
+
 function creditKill(victimName){
   const me = Game.me;
   me.k++; me.streak++; P.k++;
   P.cred += CFG.killCred;
   if (me.streak > P.streak) P.streak = me.streak;
+  const loot = salvage();
   save(); renderPilot();
-  showMsg("Splash", victimName + " · +" + CFG.killCred + " credits", "#000000");
+  showMsg("Splash", victimName + " · +" + CFG.killCred + " cr" +
+          (loot ? " · salvaged " + loot : ""), HUD_A);
 }
 function addFeed(killer, victim, meDown){
   const box = $("#feed");
@@ -3120,24 +3169,45 @@ function stepMe(dt){
   }
   if (me.pos.y > 4200){ me.pos.y = 4200; me.vel.y = Math.min(me.vel.y, 0); }
 
+  /* 보급 — 중앙 상공에 머무르면 채워진다. 부스터를 끄고 8초간
+     맞지 않아야 시작된다. 죽어서 채우는 것보다 이쪽이 빠르게. */
+  const homeR = Math.hypot(me.pos.x, me.pos.z);
+  const groundH = terrainH(0, 0);
+  const inHome = homeR < 320 &&
+                 me.pos.y > groundH + 250 && me.pos.y < groundH + 700;
+  me.noHit = (me.noHit || 0) + dt;
+  me.rearm = (inHome && !me.abOn && me.noHit > 8) ? (me.rearm || 0) + dt : 0;
+  if (me.rearm > 0){
+    me.ammo = Math.min(me.ammoMax, me.ammo + 150 * dt);
+    me.msl  = Math.min(me.mslMax,  me.msl  + .45 * dt);
+    me.hp   = Math.min(me.hpMax * .5 > me.hp ? me.hpMax * .5 : me.hp, me.hp + 4 * dt);
+  }
+
   /* 교전 구역 */
   const rad = Math.hypot(me.pos.x, me.pos.z);
   if (rad > ARENA_R){
     me.outT += dt;
-    me.warn = me.outT > 8 ? "Out of area · taking damage" : "Out of area";
+    me.warn = me.outT > 8 ? "Out of area  \u2212" + 9 + "/s"
+                          : "Out of area  damage in " + Math.max(0, Math.ceil(8 - me.outT));
     if (me.outT > 8) takeDamage(9*dt, "Out of area");
   } else { me.outT = 0; me.warn = ""; }
 
   /* 실속 / 지면 경고 */
-  if (me.speed < 48) me.warn = "Stall";
-  else if (me.pos.y - gh < 190 && me.vel.y < -18) me.warn = "Pull up";
+  /* 우선순위: 구역 이탈 > 지면 > 실속. 겹치면 두 줄까지 보여 준다. */
+  me.warn2 = "";
+  if (me.pos.y - gh < 190 && me.vel.y < -18){
+    if (me.warn) me.warn2 = "Pull up"; else me.warn = "Pull up";
+  }
+  if (me.speed < 48){
+    if (!me.warn) me.warn = "Stall"; else if (!me.warn2) me.warn2 = "Stall";
+  }
 
   /* 사격 */
   me.fireCd -= dt;
-  const firing = (K[" "] || touch.gun || Mouse.gun) && me.ammo > 0;
+  const firing = (K[" "] || touch.gun || Mouse.gun) && me.ammo >= 1;
   if (firing && me.fireCd <= 0){
     me.fireCd = 1 / (CFG.rof * (1 + (m.rof||0)));
-    me.ammo--; P.shots++;
+    me.ammo = Math.max(0, me.ammo - 1); P.shots++;
     fireBullet(me.pos, me.quat, me.vel, "me", CFG.bulletDmg);
   }
   me.firing = firing ? 1 : 0;
@@ -3146,8 +3216,8 @@ function stepMe(dt){
   const wantMsl = K["f"] || touch.msl || Mouse.msl;
   if (wantMsl && !me.mslHeld){
     me.mslHeld = true;
-    if (me.locked && me.msl > 0){
-      me.msl--;
+    if (me.locked && me.msl >= 1){
+      me.msl = Math.max(0, me.msl - 1);
       const mm = launchMissile(me.pos, me.quat, me.vel, me.lockTgt, true);
       mm.byCall = P.call;
       if (Net.up) Net.send({t:"msl", tgt: me.lockTgt === "me" ? null : me.lockTgt,
@@ -3283,6 +3353,20 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /* ── 루프 ─────────────────────────────────────────────────── */
+/* 비행 중에 들어온 참가 요청 — 작전실로 돌아가지 않고 Y/N 으로 처리한다 */
+function paintAsk(){
+  const box = $("#askjoin"); if (!box) return;
+  const list = (Net.isHost && Game.running) ? Net.requests : [];
+  if (!list.length){ box.classList.add("hide"); box.innerHTML = ""; return; }
+  box.classList.remove("hide"); box.innerHTML = "";
+  list.slice(0, 3).forEach((r, i) => {
+    const d = el("div","a");
+    d.appendChild(el("b", null, esc(r.call) + " wants in"));
+    if (i === 0) d.appendChild(el("i", null, "Y admit \u00b7 N decline"));
+    box.appendChild(d);
+  });
+}
+
 function paintTips(){
   const t = $("#tips"); if (!t) return;
   const rows = P.ctrl === "mouse"
@@ -3586,15 +3670,46 @@ function drawHUD(){
     }
   }
 
+  /* ── 피격 표시 — 어디서 맞았는지 2초간 ── */
+  if (me.hitAt && now() - me.hitAt < 2000){
+    const age = (now() - me.hitAt) / 2000;
+    c.globalAlpha = 1 - age;
+    if (me.hitFrom){
+      /* 가해자 방향을 기수 기준 각도로 환산해 원 둘레에 셰브론 */
+      const to = me.hitFrom.clone().sub(me.pos);
+      const f = FWD.clone().applyQuaternion(me.quat);
+      const r = RGT.clone().applyQuaternion(me.quat);
+      const u = UPV.clone().applyQuaternion(me.quat);
+      const ang = Math.atan2(to.dot(r), to.dot(f));
+      const up  = to.dot(u);
+      const R = 132, px = cx + Math.sin(ang) * R, py = cy - (up > 0 ? .35 : -.35) * R * Math.abs(Math.cos(ang));
+      c.strokeStyle = HUD_R; c.lineWidth = 2.4;
+      c.save(); c.translate(px, py); c.rotate(ang);
+      c.beginPath(); c.moveTo(-9, 7); c.lineTo(0, -5); c.lineTo(9, 7); c.stroke();
+      c.restore();
+    }
+    txt(c, "HIT · " + (me.lastHitCall || "Bandit"), cx, cy + 142, "center", 13, HUD_R);
+    c.globalAlpha = 1;
+  }
+
   /* ── 경고 ── */
   if (me.warn){
-    const blink = (now()/260 | 0) % 2 === 0;
-    if (blink){
-      c.strokeStyle = HUD_R; c.lineWidth = 1.6;
-      c.strokeRect(cx-88, cy+184, 176, 28);
-      txt(c, me.warn.toUpperCase(), cx, cy+198, "center", 15, HUD_R);
+    /* 폭 고정 상자를 없앴다 — 문구가 길어도 넘치지 않는다.
+       점멸은 첫 줄만, 켜짐을 길게(80/20) 해서 읽히게. */
+    const lit = (now() % 900) < 720;
+    if (lit){
+      c.strokeStyle = HUD_R; c.lineWidth = 2;
+      line(c, cx - 96, cy + 62, cx - 96, cy + 78);
+      txt(c, me.warn.toUpperCase(), cx - 88, cy + 70, "left", 14, HUD_R);
+    }
+    if (me.warn2){
+      c.strokeStyle = HUD_D; c.lineWidth = 1;
+      line(c, cx - 96, cy + 85, cx - 96, cy + 99);
+      txt(c, me.warn2.toUpperCase(), cx - 88, cy + 92, "left", 11.5, HUD_R);
     }
   }
+  if (me.rearm > 0)
+    txt(c, "REARMING", cx, cy + 118, "center", 13, HUD_A);
   if (!me.alive){
     const left = Math.max(0, (me.respawnAt - now())/1000);
     txt(c, "RESPAWN " + left.toFixed(1) + "s", cx, cy+150, "center", 15, HUD_D);
