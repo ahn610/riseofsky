@@ -3661,8 +3661,11 @@ function jetDef(key){ return JETS[key] || JETS.delta; }
 /* 사이트에 동봉한 반입 모델 — 격납고에 정식 기종으로 뜬다.
    파일이 도착하기 전에는 기본기로 서 있다가, 도착하면 갈아 끼운다. */
 const BUNDLED = [
-  { key:"sv06", nameKo:"SV06", note:"Tinkercad · delta", url:"sv06.obj",
-    cfg:{ yaw:0, pitch:-90, scale:1, tint:false, parts:{}, roles:{}, propAxis:"z" } }
+  { key:"sv06", nameKo:"SV06", note:"Twin-engine delta", url:"sv06.obj",
+    /* 기수는 모델의 -Y(캐노피 쪽). Z-up 이라 피치 -90 으로 눕히고
+       요 180 으로 앞뒤를 맞춘다. 어두운색이 노즐 — 좌우 한 쌍만 잡힌다. */
+    cfg:{ yaw:180, pitch:-90, scale:1, tint:false, parts:{},
+          roles:{ "color_2829873":"engine" }, propAxis:"z" } }
 ];
 for (const b of BUNDLED){
   JETS[b.key] = { nameKo:b.nameKo, note:b.note, url:b.url,
@@ -3859,6 +3862,9 @@ function fitModel(src, cfg, colorHex){
   });
 
   pivot.add(inner);
+  /* YXZ — 먼저 눕히고(피치) 그다음 돌린다(요). 기본 XYZ 로는 Z-up 모델을
+     눕힌 뒤 요를 돌려도 기수 방향이 바뀌지 않는다. */
+  pivot.rotation.order = "YXZ";
   pivot.rotation.y = ((cfg.yaw || 0) * Math.PI) / 180;
   if (cfg.pitch) pivot.rotation.x = (cfg.pitch * Math.PI) / 180;
   g.add(pivot);
@@ -3876,28 +3882,52 @@ function fitModel(src, cfg, colorHex){
   g.updateMatrixWorld(true);
   _bx.setFromObject(g); _bx.getSize(_sz);
 
-  /* 후연. 이름으로 잡힌 엔진이 있으면 각각의 뒤끝에, 없으면 기체 뒤끝 하나. */
-  const mkFlame = rad => new THREE.Mesh(new THREE.ConeGeometry(rad, 4.0, 10),
-    new THREE.MeshBasicMaterial({ color:0x9AD3FF, transparent:true, opacity:0,
-      blending:THREE.AdditiveBlending, depthWrite:false }));
+  /* 후연 — 삼각기둥을 옆으로 뉘여 노즐에서 뒤로 뽑는다.
+     원점이 노즐 끝에 오도록 만들어 두면 배치가 단순해진다. */
+  const mkFlame = (w, len) => {
+    const geo = new THREE.CylinderGeometry(w * .26, w, len, 3, 1, true);
+    geo.rotateX(Math.PI / 2);      // 축을 Z(뒤)로. 넓은 쪽이 노즐, 뾰족한 쪽이 끝
+    geo.rotateZ(Math.PI / 2);      // 평평한 면이 아래로 — 옆으로 뉘인 모양
+    geo.scale(1, .62, 1);          // 납작하게
+    geo.translate(0, 0, len / 2);  // 원점 = 노즐 끝
+    return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color: 0xC6E9FF, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  };
+
   const flames = [];
-  const eb = new THREE.Box3(), ec = new THREE.Vector3(), es = new THREE.Vector3();
-  if (engines.length){
-    for (const e of engines){
-      eb.setFromObject(e); eb.getCenter(ec); eb.getSize(es);
-      g.worldToLocal(ec);
-      const rad = clamp(Math.min(es.x, es.y) * .45, .3, 1.2);
-      const f = mkFlame(rad);
-      f.rotation.x = -Math.PI/2;
-      f.position.set(ec.x, ec.y, eb.max.z - g.position.z + 2.0);
+  const eb = new THREE.Box3(), ec = new THREE.Vector3(), es2 = new THREE.Vector3();
+
+  /* 쌍발기는 가운데 부품(등마루 등)이 노즐과 같은 색일 수 있다.
+     좌우 대칭짝을 이루는 것만 남기면 진짜 노즐만 걸러진다.
+     짝이 없으면(단발) 그대로 둔다. */
+  let nozzles = engines;
+  if (engines.length > 1){
+    const info = engines.map(e => {
+      const b = new THREE.Box3().setFromObject(e);
+      const c = new THREE.Vector3(); b.getCenter(c);
+      return { e, c };
+    });
+    const tol = Math.max(_sz.x * .05, .2);
+    const paired = info.filter(a => Math.abs(a.c.x) > tol && info.some(b =>
+      b !== a && Math.abs(b.c.x + a.c.x) < tol && Math.abs(b.c.z - a.c.z) < tol * 4));
+    if (paired.length >= 2) nozzles = paired.map(p => p.e);
+  }
+
+  if (nozzles.length){
+    for (const e of nozzles){
+      eb.setFromObject(e); eb.getCenter(ec); eb.getSize(es2);
+      /* g 는 이 시점에 원점·무회전이라 월드 좌표를 그대로 쓸 수 있다 */
+      const w = clamp(Math.max(es2.x, es2.y) * .62, .26, 1.4);
+      const f = mkFlame(w, 6.8);
+      f.position.set(ec.x, ec.y, eb.max.z + .15);
       g.add(f); flames.push(f);
     }
   } else {
     const back = isFinite(_bx.max.z) ? _bx.max.z : 5;
-    const rad  = clamp(Math.min(_sz.x, _sz.y) * .07, .35, 1.1);
-    const f = mkFlame(rad);
-    f.rotation.x = -Math.PI/2;
-    f.position.z = back + 2.0;
+    const w = clamp(Math.min(_sz.x, _sz.y) * .14, .3, 1.2);
+    const f = mkFlame(w, 6.8);
+    f.position.z = back + .15;
     g.add(f); flames.push(f);
   }
   g.userData.flames = flames;
