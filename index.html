@@ -76,14 +76,7 @@ button{cursor:pointer;background:none;border:none}
 .scroll::-webkit-scrollbar-track{background:transparent}
 
 /* ══ 작전실 — 3D 위에 얹힌 오버레이 ════════════════════════ */
-#ops{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;
-  background:linear-gradient(to left,
-      #0A0A0A 0, #0A0A0A 268px,
-      rgba(10,10,10,.975) 274px, rgba(10,10,10,.93) 282px,
-      rgba(10,10,10,.85) 292px,  rgba(10,10,10,.73) 304px,
-      rgba(10,10,10,.58) 318px,  rgba(10,10,10,.41) 333px,
-      rgba(10,10,10,.25) 348px,  rgba(10,10,10,.12) 360px,
-      rgba(10,10,10,.04) 368px,  rgba(10,10,10,0) 372px)}
+#ops{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;background:none}
 #ops.off{display:none}
 
 /* 상단 — 워드마크에 힘을 준다 */
@@ -105,10 +98,14 @@ button{cursor:pointer;background:none;border:none}
 
 /* 무대 — 가운데는 비워 둔다. 거기에 3D 기체가 선다. */
 #stage{position:relative;flex:1;display:grid;
-  grid-template-columns:minmax(0,1fr) 372px;min-height:0;gap:0}
-.rail{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
-/* 글자는 불투명한 쪽에만 앉힌다 — 흐려지는 104px 는 비워 둔다 */
-.rail .pnl{padding-left:104px}
+  grid-template-columns:minmax(0,1fr) 356px;min-height:0;gap:0}
+.rail{display:flex;flex-direction:column;gap:var(--s3);
+  padding:var(--s3) var(--s5) var(--s5) 0;min-height:0;min-width:0;overflow:hidden}
+/* 오른쪽 레일은 유리 카드 묶음이다 */
+.rail .pnl{padding:var(--s4) var(--s5);min-height:0;
+  background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-line);border-radius:var(--r);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 18px 48px rgba(0,0,0,.28);text-shadow:var(--halo)}
 .pnl{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s4);min-height:0}
 .pnl:last-child{border-bottom:none}
 .pnl.grow{flex:1;min-height:0;overflow-y:auto}
@@ -134,7 +131,7 @@ button{cursor:pointer;background:none;border:none}
 
 /* 스크롤바는 어디서도 선으로 보이지 않게 */
 .center::-webkit-scrollbar,.pnl.grow::-webkit-scrollbar,#drawer .pnl::-webkit-scrollbar{display:none}
-.pnl.grow,#drawer .pnl{scrollbar-width:none}
+.pnl.grow,#drawer .pnl{padding:var(--s3) var(--s5)}
 
 /* 주 동작 — 한 줄로 나란히 */
 .acts{display:flex;flex-direction:column;gap:2px}
@@ -180,22 +177,17 @@ button{cursor:pointer;background:none;border:none}
 #drawer.hide{display:none!important}
 #drawer .scrim{position:absolute;inset:0;z-index:0;background:rgba(4,4,4,.42);
   pointer-events:auto}
-#drawer .dw{position:relative;z-index:1;width:min(380px,92vw);height:100%;pointer-events:auto;
-  display:flex;flex-direction:column;overflow:hidden;
-  background:linear-gradient(to right,
-    #0A0A0A 0%, #0A0A0A 60%,
-    rgba(10,10,10,.975) 66%, rgba(10,10,10,.93) 71%,
-    rgba(10,10,10,.85) 76%,  rgba(10,10,10,.73) 81%,
-    rgba(10,10,10,.58) 85%,  rgba(10,10,10,.41) 89%,
-    rgba(10,10,10,.25) 93%,  rgba(10,10,10,.12) 96%,
-    rgba(10,10,10,.04) 98.5%, rgba(10,10,10,0) 100%)}
-#drawer .dwhd{flex:0 0 auto;display:flex;align-items:center;gap:10px;height:58px;
-  padding:0 104px 0 var(--s5)}
+#drawer .dw{position:relative;z-index:1;width:min(380px,92vw);height:calc(100% - 2*var(--s3));
+  margin:var(--s3) 0 var(--s3) var(--s3);pointer-events:auto;display:flex;flex-direction:column;
+  overflow:hidden;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-line);border-radius:var(--r);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 18px 48px rgba(0,0,0,.28);text-shadow:var(--halo)}
+#drawer .dwhd{flex:0 0 auto;display:flex;align-items:center;gap:10px;height:54px;
+  padding:0 var(--s5)}
 #drawer .dwhd h2{margin:0;font-size:10px;font-weight:500;letter-spacing:.16em;
   text-transform:uppercase;color:var(--ink3)}
 #drawer .dwhd .rule{flex:1}
 #drawer .dwin{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-#drawer .pnl{padding-right:104px}
 
 /* 파일럿 */
 .dogtag{display:flex;flex-direction:column;gap:var(--s3)}
@@ -462,13 +454,11 @@ button{cursor:pointer;background:none;border:none}
 
 /* ══ 반응형 ════════════════════════════════════════════════ */
 @media (max-width:1100px){
-  #ops{background:none}
   #stage{grid-template-columns:1fr;overflow-y:auto}
-  .rail{background:rgba(10,10,10,.9)}
+  .rail{padding:0 var(--s3) var(--s3)}
   .center{justify-content:flex-end;padding:var(--s4)}
   #flightPane{width:100%}
   .plate{position:static;transform:none;margin-bottom:var(--s4)}
-  .rail .pnl{padding-left:var(--s4)}
   .center{min-height:46vh}
   .grid{grid-template-columns:1fr;overflow-y:auto}
   .col{min-height:auto;border-right:none;border-bottom:1px solid var(--line)}
