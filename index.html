@@ -2341,6 +2341,21 @@ function buildJetVoid(colorHex){
   return g;
 }
 
+/* 추력 표현 — 후연 밝기와 프로펠러 회전을 한 번에.
+   v 는 0~1. 내장 기체는 userData.flame 하나, 반입 모델은 flames/props 배열. */
+const _spinAx = { x:new THREE.Vector3(1,0,0), y:new THREE.Vector3(0,1,0), z:new THREE.Vector3(0,0,1) };
+function setThrust(g, v, dt){
+  if (!g) return;
+  const u = g.userData;
+  const fl = u.flames || (u.flame ? [u.flame] : null);
+  if (fl) for (const f of fl) if (f.material) f.material.opacity = v;
+  if (u.props && dt){
+    const ax = _spinAx[u.propAxis] || _spinAx.z;
+    const w = (1.4 + v * 22) * dt;           // 공회전 + 추력 비례
+    for (const p of u.props) p.rotateOnAxis(ax, w);
+  }
+}
+
 /* 폭발 — 짧게 살고 사라지는 스프라이트 */
 const Boom = {
   tex:null, live:[],
@@ -2510,7 +2525,8 @@ const Mouse = { x:0, y:0, locked:false, gun:false, msl:false };
 function myJetKey(){
   const c = P.custom;
   return P.jet + "|" + (P.jet === "custom" && c
-    ? c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" + (c.tint ? 1 : 0)
+    ? c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" + (c.tint ? 1 : 0) +
+      "|" + (c.propAxis || "z") + "|" + JSON.stringify(c.parts || {})
     : "");
 }
 
@@ -2583,8 +2599,7 @@ const Attract = {
     j.quaternion.set(0, 0, 0, 1);
     j.rotateZ(Math.sin(this.t * .26) * .055);
     j.rotateX(Math.sin(this.t * .19) * .03);
-    const fl = j.userData.flame;
-    if (fl) fl.material.opacity = .28 + Math.sin(this.t * 1.7) * .05;
+    setThrust(j, .28 + Math.sin(this.t * 1.7) * .05, dt);
 
     /* 카메라가 그 둘레를 천천히 돈다 */
     const a = this.t * .1, r = 54;
@@ -2694,7 +2709,8 @@ function jetSig(info){
   if (k !== "custom" || !info.jetCfg) return k;
   const c = info.jetCfg;
   return "custom|" + c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" +
-         (c.tint ? 1 : 0) + "|" + (Models.cache.has(c.src) ? 1 : 0);
+         (c.tint ? 1 : 0) + "|" + (c.propAxis || "z") + "|" + JSON.stringify(c.parts || {}) +
+         "|" + (Models.cache.has(c.src) ? 1 : 0);
 }
 function makeRemoteJet(info){
   const col = new THREE.Color(info.color || "#8A8A8A").getHex();
@@ -2744,8 +2760,7 @@ function syncRemotes(dt){
     r.quat.slerp(r.tq, 1 - Math.exp(-13*dt));
     r.g.position.copy(r.pos); r.g.quaternion.copy(r.quat);
     r.g.visible = r.st !== "down";
-    const f = r.g.userData.flame;
-    if (f) f.material.opacity = r.g.visible ? (s.ab ? .82 : .3) : 0;
+    setThrust(r.g, r.g.visible ? (s.ab ? .82 : .3) : 0, dt);
   }
   for (const [pid, r] of Game.remotes){
     if (!Net.states.has(pid) || !Net.roster.has(pid)){
@@ -2805,7 +2820,7 @@ function stepDrones(dt){
     d.vel.lerp(fwd.clone().multiplyScalar(d.speed), 1 - Math.exp(-5*dt));
     d.pos.addScaledVector(d.vel, dt);
     d.g.position.copy(d.pos); d.g.quaternion.copy(d.quat);
-    const fl = d.g.userData.flame; if (fl) fl.material.opacity = .35;
+    setThrust(d.g, .35, dt);
 
     /* 사격 */
     d.fireCd -= dt;
@@ -3145,8 +3160,7 @@ function stepMe(dt){
 
   Game.jet.position.copy(me.pos);
   Game.jet.quaternion.copy(me.quat);
-  const fl = Game.jet.userData.flame;
-  if (fl) fl.material.opacity = me.throttle * (me.abOn ? .95 : .42);
+  setThrust(Game.jet, me.throttle * (me.abOn ? .95 : .42), dt);
   Game.jet.visible = me.alive && Game.view === 0;
 }
 
@@ -3735,18 +3749,54 @@ const Models = {
 
 /* ── 반입 모델을 게임 규격에 맞춘다 ────────────────────────── */
 const _bx = new THREE.Box3(), _sz = new THREE.Vector3(), _ct = new THREE.Vector3();
+/* 이름 규칙. 모델러가 파트 이름에 이 단어를 넣으면 자동으로 잡힌다. */
+const PART_ENGINE = /engine|nozzle|exhaust|thrust|burner|afterburn|jet\b/i;
+const PART_PROP   = /prop|rotor|blade|spinner/i;
+
+function partName(o){
+  return (o.name || (o.material && !Array.isArray(o.material) && o.material.name) || "").trim();
+}
+
+/* 모델 안의 파트 이름 목록 — 격납고가 색 칸을 만들 때 쓴다 */
+function listParts(src){
+  const seen = new Set(), out = [];
+  src.traverse(o => {
+    if (!o.isMesh) return;
+    const n = partName(o);
+    if (!n || seen.has(n)) return;
+    seen.add(n);
+    out.push({ name:n, engine:PART_ENGINE.test(n), prop:PART_PROP.test(n) });
+  });
+  return out;
+}
+
 function fitModel(src, cfg, colorHex){
   const g = new THREE.Group();
   const pivot = new THREE.Group();
   const inner = src.clone(true);
+  const parts = cfg.parts || {};
+  const partKeys = Object.keys(parts).map(k => k.toLowerCase());
+  const engines = [], props = [];
 
-  /* 클론은 재질을 공유한다. 도장색을 입히려면 반드시 복제해야
+  /* 클론은 재질을 공유한다. 색을 바꾸려면 반드시 복제해야
      같은 모델을 쓰는 다른 기체까지 물들지 않는다. */
   inner.traverse(o => {
     if (!o.isMesh || !o.material) return;
-    const dup = m => { const c = m.clone(); if (cfg.tint) c.color = new THREE.Color(colorHex); return c; };
+    const nm = partName(o), low = nm.toLowerCase();
+    /* 파트별 색: 정확히 같은 이름 우선, 없으면 부분 일치 */
+    let hex = null;
+    if (parts[nm] != null) hex = parts[nm];
+    else for (const k of partKeys) if (k && low.includes(k)) { hex = parts[k] ?? parts[Object.keys(parts).find(x => x.toLowerCase() === k)]; break; }
+    const dup = m => {
+      const c = m.clone();
+      if (cfg.tint) c.color = new THREE.Color(colorHex);
+      if (hex) c.color = new THREE.Color(hex);
+      return c;
+    };
     o.material = Array.isArray(o.material) ? o.material.map(dup) : dup(o.material);
     o.castShadow = o.receiveShadow = false;
+    if (PART_ENGINE.test(nm)) engines.push(o);
+    else if (PART_PROP.test(nm)) props.push(o);
   });
 
   pivot.add(inner);
@@ -3764,20 +3814,36 @@ function fitModel(src, cfg, colorHex){
   g.updateMatrixWorld(true);
   _bx.setFromObject(g); _bx.getCenter(_ct);
   pivot.position.sub(_ct);
-
-  /* 후연 — 기체 뒤끝 바로 뒤에.
-     굵기는 반드시 '정규화된' 치수로 잰다. 원본이 밀리미터 단위로 만들어졌을 수도 있다. */
   g.updateMatrixWorld(true);
   _bx.setFromObject(g); _bx.getSize(_sz);
-  const back = isFinite(_bx.max.z) ? _bx.max.z : 5;
-  const rad  = clamp(Math.min(_sz.x, _sz.y) * .07, .35, 1.1);
-  const flame = new THREE.Mesh(new THREE.ConeGeometry(rad, 4.0, 10),
+
+  /* 후연. 이름으로 잡힌 엔진이 있으면 각각의 뒤끝에, 없으면 기체 뒤끝 하나. */
+  const mkFlame = rad => new THREE.Mesh(new THREE.ConeGeometry(rad, 4.0, 10),
     new THREE.MeshBasicMaterial({ color:0x9AD3FF, transparent:true, opacity:0,
       blending:THREE.AdditiveBlending, depthWrite:false }));
-  flame.rotation.x = -Math.PI/2;
-  flame.position.z = back + 2.0;
-  g.add(flame);
-  g.userData.flame = flame;
+  const flames = [];
+  const eb = new THREE.Box3(), ec = new THREE.Vector3(), es = new THREE.Vector3();
+  if (engines.length){
+    for (const e of engines){
+      eb.setFromObject(e); eb.getCenter(ec); eb.getSize(es);
+      g.worldToLocal(ec);
+      const rad = clamp(Math.min(es.x, es.y) * .45, .3, 1.2);
+      const f = mkFlame(rad);
+      f.rotation.x = -Math.PI/2;
+      f.position.set(ec.x, ec.y, eb.max.z - g.position.z + 2.0);
+      g.add(f); flames.push(f);
+    }
+  } else {
+    const back = isFinite(_bx.max.z) ? _bx.max.z : 5;
+    const rad  = clamp(Math.min(_sz.x, _sz.y) * .07, .35, 1.1);
+    const f = mkFlame(rad);
+    f.rotation.x = -Math.PI/2;
+    f.position.z = back + 2.0;
+    g.add(f); flames.push(f);
+  }
+  g.userData.flames = flames;
+  g.userData.flame  = flames[0];
+  if (props.length){ g.userData.props = props; g.userData.propAxis = cfg.propAxis || "z"; }
   g.userData.custom = true;
   return g;
 }
@@ -3951,6 +4017,51 @@ function openHangar(){
   ctl.appendChild(tintW);
   tune.appendChild(ctl);
 
+  /* 파트 — 이름별 색, 엔진/프로펠러 자동 감지 표시 */
+  const partsBox = el("div"); partsBox.style.cssText = "display:flex;flex-direction:column;gap:6px";
+  tune.appendChild(partsBox);
+  function drawParts(){
+    partsBox.innerHTML = "";
+    const list = draft ? listParts(Models.cache.get(draft.src)) : [];
+    if (!list.length){
+      partsBox.appendChild(el("div","note",
+        "This model has no named parts, so it can only be painted as one piece. " +
+        "Name the meshes in your 3D tool (fuselage, wing, canopy, engine, prop…) to colour them separately."));
+      return;
+    }
+    partsBox.appendChild(el("div","lbl","Parts \u00b7 " + list.length));
+    const hasProp = list.some(p => p.prop), hasEng = list.some(p => p.engine);
+    const grid = el("div"); grid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:4px 10px";
+    list.slice(0, 40).forEach(p => {
+      const row = el("label"); row.style.cssText = "display:flex;align-items:center;gap:8px;font-size:11.5px;cursor:pointer";
+      const sw = el("input"); sw.type = "color";
+      sw.value = (draft.parts && draft.parts[p.name]) || "#8A8A8A";
+      sw.style.cssText = "width:22px;height:18px;padding:0;border:1px solid var(--edge);background:none;cursor:pointer";
+      sw.addEventListener("input", () => { draft.parts = draft.parts || {}; draft.parts[p.name] = sw.value; repaint(); });
+      const nm = el("span", null, esc(p.name)); nm.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      row.appendChild(sw); row.appendChild(nm);
+      if (p.engine) row.appendChild(el("span","lbl","engine"));
+      if (p.prop)   row.appendChild(el("span","lbl","prop"));
+      grid.appendChild(row);
+    });
+    partsBox.appendChild(grid);
+    if (list.length > 40) partsBox.appendChild(el("div","note","Showing the first 40 parts."));
+    partsBox.appendChild(el("div","note",
+      (hasEng ? "Engine parts found \u2014 the burner sits on each of them. " :
+                "No part is named engine/nozzle/exhaust, so the burner sits at the tail. ") +
+      (hasProp ? "Propeller parts found \u2014 they spin with the throttle." : "")));
+    if (hasProp){
+      const ax = el("div","rng");
+      ax.appendChild(el("span","lbl","Prop axis"));
+      const sel = el("select","inp"); sel.style.width = "auto";
+      ["z","x","y"].forEach(v => { const o = el("option", null, v.toUpperCase()); o.value = v; if ((draft.propAxis||"z") === v) o.selected = true; sel.appendChild(o); });
+      sel.addEventListener("change", () => { draft.propAxis = sel.value; repaint(); });
+      ax.appendChild(sel);
+      ax.appendChild(el("span","note","Pick the axis the propeller spins around in your file."));
+      partsBox.appendChild(ax);
+    }
+  }
+
   const applyRow = el("div"); applyRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
   applyRow.appendChild(mkBtn("Apply","pri", () => {
     P.custom = draft; P.jet = "custom"; save();
@@ -3967,7 +4078,9 @@ function openHangar(){
   const okmsg = m => { status.textContent = m; status.style.color = "var(--good)"; };
 
   function beginTune(srcKey, name, shared){
-    draft = { src:srcKey, name, shared:!!shared, yaw:0, pitch:0, scale:1, tint:false };
+    draft = { src:srcKey, name, shared:!!shared, yaw:0, pitch:0, scale:1, tint:false,
+              parts:{}, propAxis:"z" };
+    drawParts();
     tune.classList.remove("hide");
     tintC.checked = false;
     Array.from(ctl.querySelectorAll("input[type=range]")).forEach((r,i) => {
