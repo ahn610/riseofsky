@@ -457,8 +457,7 @@ button{cursor:pointer;background:none;border:none}
 .tbtn.hit{border-color:var(--red);color:var(--red)}
 #tgun{right:16px;bottom:16px;width:78px;height:78px}
 #tmsl{right:102px;bottom:38px;width:56px;height:56px}
-#tup{right:20px;bottom:104px;width:70px;height:32px}
-#tdn{right:20px;bottom:142px;width:70px;height:32px}
+
 #tab2{right:102px;bottom:100px;width:56px;height:32px}
 
 /* ══ 반응형 ════════════════════════════════════════════════ */
@@ -607,9 +606,7 @@ button{cursor:pointer;background:none;border:none}
     <div id="stick"><div class="k"></div></div>
     <button class="tbtn" id="tgun" type="button">Guns</button>
     <button class="tbtn" id="tmsl" type="button">Msl</button>
-    <button class="tbtn" id="tup" type="button">Thr +</button>
-    <button class="tbtn" id="tdn" type="button">Thr &minus;</button>
-    <button class="tbtn" id="tab2" type="button">Burner</button>
+    <button class="tbtn" id="tab2" type="button">Boost</button>
   </div>
 </div>
 
@@ -803,10 +800,10 @@ function renderPilot(){
       cw.appendChild(inv);
       cw.appendChild(el("div","note",
         "Click the sky to capture the pointer. The stick holds where you leave it, " +
-        "like a real one — press <b>Z</b> to centre it. Left click fires, right click launches."));
+        "like a real one — press <b>Z</b> to centre it. Left click fires, right click launches. Hold Shift to boost."));
     } else {
       cw.appendChild(el("div","note",
-        "W/S pitch, A/D roll, Q/E rudder. Shift and Ctrl work the throttle."));
+        "W/S pitch, A/D roll, Q/E rudder. Hold Shift to boost."));
     }
   }
 
@@ -2404,7 +2401,7 @@ const UPV = new THREE.Vector3(0,1,0);
 const RGT = new THREE.Vector3(1,0,0);
 
 const CFG = {
-  thrust:70, drag:0.00224, vmax:196, vmin:0,
+  thrust:70, drag:0.00224, vmax:196, vmin:0, cruise:.85,   // 속도 조절 없음 — 항상 이 값
   pitch:1.42, roll:2.55, yaw:0.62,
   abMul:1.48, abDrain:0.34, abFill:0.16,
   bulletV:790, bulletLife:1.35, bulletDmg:5, rof:11, ammo:700,
@@ -2520,7 +2517,7 @@ const Mouse = { x:0, y:0, locked:false, gun:false, msl:false };
     b.addEventListener("pointerup", off); b.addEventListener("pointercancel", off);
     b.addEventListener("pointerleave", off);
   };
-  bind("#tgun","gun"); bind("#tmsl","msl"); bind("#tup","up"); bind("#tdn","dn"); bind("#tab2","ab");
+  bind("#tgun","gun"); bind("#tmsl","msl"); bind("#tab2","ab");
 })();
 
 /* 내 기체의 지문. 기종이나 반입 모델 보정이 바뀌면 값이 달라진다. */
@@ -2619,7 +2616,7 @@ function freshMe(){
   const m = mods();
   return {
     pos:new THREE.Vector3(), quat:new THREE.Quaternion(), vel:new THREE.Vector3(),
-    speed:120, throttle:.72, ab:1, abOn:false,
+    speed:120, throttle:CFG.cruise, ab:1, abOn:false,
     hpMax:100 + m.hp, hp:100 + m.hp,
     ammo:CFG.ammo, ammoMax:CFG.ammo,
     msl:CFG.msl + m.msl, mslMax:CFG.msl + m.msl,
@@ -2634,7 +2631,7 @@ function spawnPoint(me){
   const look = new THREE.Vector3(rnd(-200,200), me.pos.y*0.8, rnd(-200,200));
   const mtx = new THREE.Matrix4().lookAt(me.pos, look, UPV);
   me.quat.setFromRotationMatrix(mtx);
-  me.speed = 140; me.throttle = .8; me.ab = 1;
+  me.speed = 140; me.throttle = CFG.cruise; me.ab = 1;
   me.vel.copy(FWD).applyQuaternion(me.quat).multiplyScalar(me.speed);
   me.hp = me.hpMax; me.ammo = me.ammoMax; me.msl = me.mslMax;
   me.alive = true; me.outT = 0; me.lockT = 0; me.locked = false; me.lockTgt = null;
@@ -3082,10 +3079,8 @@ function stepMe(dt){
     pi += Mouse.y * (P.invertY ? -1 : 1);
   }
 
-  if (K["Shift"] || touch.up) me.throttle = Math.min(1, me.throttle + .55*dt);
-  if (K["Control"] || touch.dn) me.throttle = Math.max(0, me.throttle - .55*dt);
-
-  const wantAB = (K["r"] || touch.ab) && me.ab > .02;
+  me.throttle = CFG.cruise;                     // 별도 속도 조절 없음
+  const wantAB = (K["Shift"] || touch.ab) && me.ab > .02;
   me.abOn = wantAB;
   const m = me.mods;
   me.ab = clamp(me.ab + (wantAB ? -CFG.abDrain : CFG.abFill*(1 + (m.abr||0))) * dt, 0, 1);
@@ -3288,11 +3283,11 @@ function paintTips(){
   const t = $("#tips"); if (!t) return;
   const rows = P.ctrl === "mouse"
     ? [["Mouse","Stick"],["L / R click","Guns / Missile"],["Z","Centre stick"],
-       ["Shift/Ctrl","Throttle"],["R","Burner"],["T","Radio"],["Tab","Score"],
-       ["C","View"],["Esc","Release, then return"]]
-    : [["W/S","Pitch"],["A/D","Roll"],["Q/E","Yaw"],["Shift/Ctrl","Throttle"],
-       ["R","Burner"],["Space","Guns"],["F","Missile"],["T","Radio"],
-       ["Tab","Score"],["C","View"],["Esc","Return"]];
+       ["Shift","Boost"],["T","Radio"],["Tab","Score"],["C","View"],
+       ["Esc","Release, then return"]]
+    : [["W/S","Pitch"],["A/D","Roll"],["Q/E","Yaw"],["Shift","Boost"],
+       ["Space","Guns"],["F","Missile"],["T","Radio"],["Tab","Score"],
+       ["C","View"],["Esc","Return"]];
   t.innerHTML = "";
   rows.forEach(([k, v]) => {
     const sp = el("span");
@@ -3532,14 +3527,13 @@ function drawHUD(){
   }
 
   /* ── 좌하단 계기 ── */
-  const bx = 18, by = H - 86;
-  bar(c, bx, by,      104, 6, me.throttle, HUD_A,  "THR " + Math.round(me.throttle*100) + "%");
-  bar(c, bx, by + 22, 104, 6, me.ab,       me.abOn ? HUD_R : HUD_G, "A/B " + Math.round(me.ab*100) + "%");
-  bar(c, bx, by + 44, 104, 6, me.hp/me.hpMax,
+  const bx = 18, by = H - 64;
+  bar(c, bx, by,      104, 6, me.ab,       me.abOn ? HUD_R : HUD_G, "BOOST " + Math.round(me.ab*100) + "%");
+  bar(c, bx, by + 22, 104, 6, me.hp/me.hpMax,
       me.hp/me.hpMax > .4 ? HUD_G : HUD_R, "HULL " + Math.round(me.hp));
-  txt(c, "RDS " + me.ammo, bx, by + 64, "left", 10.5, me.ammo < 80 ? HUD_R : HUD_A);
+  txt(c, "RDS " + me.ammo, bx, by + 42, "left", 10.5, me.ammo < 80 ? HUD_R : HUD_A);
   txt(c, "MSL " + "◆".repeat(me.msl) + "◇".repeat(Math.max(0, me.mslMax - me.msl)),
-      bx + 66, by + 64, "left", 10.5, me.msl ? HUD_A : HUD_D);
+      bx + 66, by + 42, "left", 10.5, me.msl ? HUD_A : HUD_D);
 
   /* ── 레이더 ── */
   const rr = 54, rx = cx, ry = H - rr - 48;
