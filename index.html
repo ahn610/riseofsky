@@ -3055,8 +3055,10 @@ function stepMe(dt){
   if (K["s"] || K["ArrowDown"])  pi += 1;
   if (K["a"] || K["ArrowLeft"])  ro -= 1;
   if (K["d"] || K["ArrowRight"]) ro += 1;
-  if (K["q"]) ya -= 1;
-  if (K["e"]) ya += 1;
+  /* 로컬 +Y 회전은 기수를 왼쪽으로 돌린다(기수 -Z 기준).
+     Q = 왼쪽, E = 오른쪽 — 관례대로. */
+  if (K["q"]) ya += 1;
+  if (K["e"]) ya -= 1;
   if (touch.sx || touch.sy){ ro += touch.sx; pi += touch.sy; }
   if (P.ctrl === "mouse" && Mouse.locked){
     ro += Mouse.x;
