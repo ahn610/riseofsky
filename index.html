@@ -681,7 +681,7 @@ function load(){
           call: pick(DEFAULT_CALLS) + "-" + (1+(Math.random()*9|0)),
           cred: 1400, bag: { "af.plate":1, "av.rdr":1 }, eq: ["af.plate", null, null],
           k:0, d:0, sorties:0, shots:0, hits:0, streak:0, color: pick(COLORS),
-          jet:"delta", custom:null,
+          jet:"delta", custom:null, paint:{},
           ctrl:"key", sens:1, invertY:false };
     save(r);
   }
@@ -690,6 +690,7 @@ function load(){
   r.bag = r.bag || {};
   r.jet = r.jet || "delta";
   if (r.custom === undefined) r.custom = null;
+  r.paint = r.paint || {};
   r.ctrl = r.ctrl === "mouse" ? "mouse" : "key";
   r.sens = typeof r.sens === "number" ? clamp(r.sens, .3, 3) : 1;
   r.invertY = !!r.invertY;
@@ -2336,6 +2337,10 @@ const _spinAx = { x:new THREE.Vector3(1,0,0), y:new THREE.Vector3(0,1,0), z:new 
 function setThrust(g, v, dt){
   if (!g) return;
   const u = g.userData;
+  if (u.glows){                       // 발광 파트 — 부스터에 따라 달아오른다
+    const k = .22 + v * 2.4;
+    for (const m of u.glows){ const mm = m.material; if (mm) mm.emissiveIntensity = k; }
+  }
   const fl = u.flames || (u.flame ? [u.flame] : null);
   if (fl) for (const f of fl) if (f.material) f.material.opacity = v;
   if (u.props && dt){
@@ -2397,7 +2402,7 @@ const CFG = {
   bulletV:790, bulletLife:1.35, bulletDmg:5, rof:11, ammo:700,
   mslV:250, mslAcc:120, mslVmax:360, mslTurn:2.1, mslLife:11, mslDmg:56, msl:4,
   lockCone:0.245, lockTime:1.1, lockRange:1700,
-  hitR:9.5, respawn:5, killCred:140
+  hitR:19, respawn:5, killCred:140
 };
 
 const Game = {
@@ -2513,7 +2518,10 @@ const Mouse = { x:0, y:0, locked:false, gun:false, msl:false };
 /* 내 기체의 지문. 기종이나 반입 모델 보정이 바뀌면 값이 달라진다. */
 function myJetKey(){
   const c = P.custom;
-  const bd = JETS[P.jet] && JETS[P.jet].url ? "|" + (Models.cache.has(JETS[P.jet].url) ? 1 : 0) : "";
+  const bd = JETS[P.jet] && JETS[P.jet].url
+    ? "|" + (Models.cache.has(JETS[P.jet].url) ? 1 : 0) +
+      "|" + JSON.stringify((P.paint && P.paint[P.jet]) || {})
+    : "";
   return P.jet + bd + "|" + (P.jet === "custom" && c
     ? c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" + (c.tint ? 1 : 0) +
       "|" + (c.propAxis || "z") + "|" + JSON.stringify(c.parts || {}) +
@@ -2593,12 +2601,12 @@ const Attract = {
     setThrust(j, .28 + Math.sin(this.t * 1.7) * .05, dt);
 
     /* 카메라가 그 둘레를 천천히 돈다 */
-    const a = this.t * .1, r = 54;
+    const a = this.t * .1, r = 56;
     c.position.set(cen.x + Math.sin(a) * r,
-                   cen.y + 10 + Math.sin(this.t * .31) * 1.8,
+                   cen.y + 12 + Math.sin(this.t * .31) * 2,
                    cen.z + Math.cos(a) * r);
     c.up.set(0, 1, 0);
-    c.lookAt(_atB.set(cen.x, cen.y - 2.2, cen.z));   // 기체를 화면 위쪽에 앉힌다
+    c.lookAt(_atB.set(cen.x, cen.y - 3, cen.z));     // 기체를 화면 위쪽에 앉힌다
     World.renderer.render(World.scene, World.camera);
   }
 };
@@ -2853,7 +2861,7 @@ function fireBullet(pos, quat, baseVel, owner, dmg){
   fwd.x += rnd(-spread, spread); fwd.y += rnd(-spread, spread); fwd.z += rnd(-spread, spread);
   fwd.normalize();
   Game.bullets.push({
-    p: pos.clone().addScaledVector(fwd, 7),
+    p: pos.clone().addScaledVector(fwd, 14),
     v: fwd.multiplyScalar(CFG.bulletV).add(baseVel),
     t: CFG.bulletLife, owner, dmg: dmg || CFG.bulletDmg
   });
@@ -2876,21 +2884,21 @@ function stepBullets(dt){
         if (r.st === "down") continue;
         if (segHit(prev, b.p, r.pos, CFG.hitR)){
           queueDmg(pid, b.dmg); P.hits++;
-          Boom.at(b.p, 9, .28); hitSomething = true; break;
+          Boom.at(b.p, 14, .28); hitSomething = true; break;
         }
       }
       if (!hitSomething) for (const d of Game.drones){
         if (!d.alive) continue;
         if (segHit(prev, b.p, d.pos, CFG.hitR)){
-          d.hp -= b.dmg; P.hits++; Boom.at(b.p, 9, .28); hitSomething = true;
-          if (d.hp <= 0){ d.alive = false; Boom.at(d.pos, 46, 1.0); onKill(d.name); }
+          d.hp -= b.dmg; P.hits++; Boom.at(b.p, 14, .28); hitSomething = true;
+          if (d.hp <= 0){ d.alive = false; Boom.at(d.pos, 70, 1.0); onKill(d.name); }
           break;
         }
       }
       if (hitSomething){ Game.bullets.splice(i,1); continue; }
     } else if (b.owner === "drone"){
       if (Game.me.alive && segHit(prev, b.p, Game.me.pos, CFG.hitR)){
-        takeDamage(b.dmg, "Drone"); Boom.at(b.p, 8, .25);
+        takeDamage(b.dmg, "Drone"); Boom.at(b.p, 12, .25);
         Game.bullets.splice(i,1); continue;
       }
     }
@@ -2960,25 +2968,25 @@ function stepMissiles(dt){
     m.g.position.copy(m.pos); m.g.quaternion.copy(m.quat);
 
     m.smoke -= dt;
-    if (m.smoke <= 0){ m.smoke = .05; Boom.at(m.pos, 4.5, .45); }
+    if (m.smoke <= 0){ m.smoke = .05; Boom.at(m.pos, 7, .45); }
 
     let dead = m.t <= 0 || m.pos.y < terrainH(m.pos.x, m.pos.z);
     if (!dead && m.mine){
       for (const [pid, r] of Game.remotes){
         if (r.st === "down") continue;
-        if (segHit(prev, m.pos, r.pos, 16)){ queueDmg(pid, CFG.mslDmg); Boom.at(m.pos, 54, .9); dead = true; break; }
+        if (segHit(prev, m.pos, r.pos, 32)){ queueDmg(pid, CFG.mslDmg); Boom.at(m.pos, 80, .9); dead = true; break; }
       }
       if (!dead) for (const d of Game.drones){
         if (!d.alive) continue;
-        if (segHit(prev, m.pos, d.pos, 16)){
-          d.hp -= CFG.mslDmg; Boom.at(m.pos, 54, .9); dead = true;
-          if (d.hp <= 0){ d.alive = false; Boom.at(d.pos, 52, 1.1); onKill(d.name); }
+        if (segHit(prev, m.pos, d.pos, 32)){
+          d.hp -= CFG.mslDmg; Boom.at(m.pos, 80, .9); dead = true;
+          if (d.hp <= 0){ d.alive = false; Boom.at(d.pos, 78, 1.1); onKill(d.name); }
           break;
         }
       }
     } else if (!dead && !m.mine && m.tgt === "me"){
-      if (Game.me.alive && segHit(prev, m.pos, Game.me.pos, 16)){
-        takeDamage(CFG.mslDmg, m.byCall || "Missile"); Boom.at(m.pos, 54, .9); dead = true;
+      if (Game.me.alive && segHit(prev, m.pos, Game.me.pos, 32)){
+        takeDamage(CFG.mslDmg, m.byCall || "Missile"); Boom.at(m.pos, 80, .9); dead = true;
       }
     }
     if (dead){ World.scene.remove(m.g); Game.missiles.splice(i,1); }
@@ -3008,7 +3016,7 @@ function die(byCall, byPid){
   const me = Game.me;
   me.alive = false; me.respawnAt = now() + CFG.respawn*1000;
   me.d++; me.streak = 0; P.d++; save();
-  Boom.at(me.pos, 70, 1.4);
+  Boom.at(me.pos, 105, 1.4);
   Game.jet.visible = false;
   showMsg("Shot down", (byCall ? "Hit by " + byCall + ". " : "") + "Respawn in 5 s.");
   addFeed(byCall || "—", P.call, true);
@@ -3105,8 +3113,8 @@ function stepMe(dt){
 
   /* 지형·해면 충돌 */
   const gh = Math.max(terrainH(me.pos.x, me.pos.z), SEA_Y - 2);
-  if (me.pos.y < gh + 7){
-    Boom.at(me.pos, 74, 1.5);
+  if (me.pos.y < gh + 14){
+    Boom.at(me.pos, 110, 1.5);
     die("Terrain", null);
     return;
   }
@@ -3196,14 +3204,14 @@ let camPos = new THREE.Vector3(), camInit = false;
 function stepCamera(dt){
   const me = Game.me, cam = World.camera;
   if (Game.view === 1){
-    _cp.set(0, .95, -1.4).applyQuaternion(me.quat).add(me.pos);
+    _cp.set(0, 1.9, -2.8).applyQuaternion(me.quat).add(me.pos);
     cam.position.copy(_cp);
     cam.quaternion.copy(me.quat);
     camInit = false;
     return;
   }
-  const back = 26 + me.speed*0.055;
-  _cp.set(0, 7.5, back).applyQuaternion(me.quat).add(me.pos);
+  const back = 30 + me.speed*0.055;
+  _cp.set(0, 10.5, back).applyQuaternion(me.quat).add(me.pos);
   if (!camInit){ camPos.copy(_cp); camInit = true; }
   camPos.lerp(_cp, 1 - Math.exp(-9*dt));
   const gh = terrainH(camPos.x, camPos.z) + 5;
@@ -3647,7 +3655,8 @@ function bar(c, x, y, w, h, frac, col, label){
      · g.userData.flame 에 Mesh 하나 — 게임이 매 프레임 그 material.opacity 로
        엔진 출력을 표현한다(프로펠러기라면 회전 디스크로 읽으면 된다)
    ═════════════════════════════════════════════════════════════ */
-const JET_LEN = 13;
+const JET_SCALE = 2;            // 기체 전체 배율
+const JET_LEN = 13 * JET_SCALE;
 
 /* 기종 등록소. 값은 {nameKo, note, build(colorHex)} */
 const JETS = {
@@ -3665,13 +3674,16 @@ const BUNDLED = [
     /* 기수는 모델의 -Y(캐노피 쪽). Z-up 이라 피치 -90 으로 눕히고
        요 180 으로 앞뒤를 맞춘다. 어두운색이 노즐 — 좌우 한 쌍만 잡힌다. */
     cfg:{ yaw:180, pitch:-90, scale:1, tint:false, parts:{},
-          roles:{ "color_2829873":"engine" }, propAxis:"z" } }
+          roles:{ "color_2829873":"engine", "color_14093196":"glow" }, propAxis:"z" } }
 ];
 for (const b of BUNDLED){
   JETS[b.key] = { nameKo:b.nameKo, note:b.note, url:b.url,
     build(colorHex){
       const src = Models.cache.get(b.url);
-      return src ? fitModel(src, b.cfg, colorHex) : buildJetDelta(colorHex);
+      if (!src) return buildJetDelta(colorHex);
+      const cfg = Object.assign({}, b.cfg,
+        { parts: Object.assign({}, b.cfg.parts, (P.paint && P.paint[b.key]) || {}) });
+      return fitModel(src, cfg, colorHex);
     } };
 }
 function loadBundled(){
@@ -3836,7 +3848,7 @@ function fitModel(src, cfg, colorHex){
   const inner = src.clone(true);
   const parts = cfg.parts || {}, roles = cfg.roles || {};
   const partKeys = Object.keys(parts).map(k => k.toLowerCase());
-  const engines = [], props = [];
+  const engines = [], props = [], glows = [];
 
   /* 클론은 재질을 공유한다. 색을 바꾸려면 반드시 복제해야
      같은 모델을 쓰는 다른 기체까지 물들지 않는다. */
@@ -3847,18 +3859,23 @@ function fitModel(src, cfg, colorHex){
     let hex = tinkerHex(nm);                 // 팅커캐드 원색이 기본
     if (parts[nm] != null) hex = parts[nm];
     else for (const k of partKeys) if (k && low.includes(k)) { hex = parts[k] ?? parts[Object.keys(parts).find(x => x.toLowerCase() === k)]; break; }
+    const role = roles[nm] !== undefined ? roles[nm]
+               : PART_ENGINE.test(nm) ? "engine" : PART_PROP.test(nm) ? "prop" : "";
     const dup = m => {
       const c = m.clone();
       if (cfg.tint) c.color = new THREE.Color(colorHex);
       if (hex) c.color = new THREE.Color(hex);
+      if (role === "glow" && c.emissive){      // 제 색으로 달아오르게
+        c.emissive = c.color.clone();
+        c.emissiveIntensity = .22;
+      }
       return c;
     };
     o.material = Array.isArray(o.material) ? o.material.map(dup) : dup(o.material);
     o.castShadow = o.receiveShadow = false;
-    const role = roles[nm] !== undefined ? roles[nm]
-               : PART_ENGINE.test(nm) ? "engine" : PART_PROP.test(nm) ? "prop" : "";
     if (role === "engine") engines.push(o);
     else if (role === "prop") props.push(o);
+    else if (role === "glow") glows.push(o);
   });
 
   pivot.add(inner);
@@ -3933,6 +3950,7 @@ function fitModel(src, cfg, colorHex){
   g.userData.flames = flames;
   g.userData.flame  = flames[0];
   if (props.length){ g.userData.props = props; g.userData.propAxis = cfg.propAxis || "z"; }
+  if (glows.length) g.userData.glows = glows;
   g.userData.custom = true;
   return g;
 }
@@ -3949,7 +3967,11 @@ function buildJet(colorHex, key, cfg){
     }
     return buildJetDelta(colorHex);          // 아직 안 읽혔으면 기본기로
   }
-  return jetDef(key).build(colorHex);
+  const g = jetDef(key).build(colorHex);
+  /* 내장 기체는 코드상 13유닛으로 만들어진다. fitModel 을 거친 것은
+     JET_LEN 에서 이미 배율이 반영돼 있으니 건드리지 않는다. */
+  if (!g.userData.custom) g.scale.setScalar(JET_SCALE);
+  return g;
 }
 
 /* ── 카드 미리보기 ────────────────────────────────────────
@@ -4024,7 +4046,8 @@ function openHangar(){
       card.appendChild(el("i", null, esc(def.note || "")));
       if (k === "custom") card.appendChild(el("span","mine","Imported"));
       card.addEventListener("click", () => {
-        P.jet = k; save(); renderPilot(); swapMyJet(); drawBay();
+        P.jet = k; save(); renderPilot(); swapMyJet(); Attract.sync(); drawBay();
+        if (typeof drawPaint === "function") drawPaint();
       });
       bay.appendChild(card);
       /* 카드가 붙은 뒤에 그려야 캔버스 크기가 잡힌다 */
@@ -4034,6 +4057,52 @@ function openHangar(){
     });
   };
   drawBay();
+
+  /* ── 도장 — 지금 고른 기체의 파트 색 ── */
+  const paintBox = el("div");
+  paintBox.style.cssText = "display:flex;flex-direction:column;gap:8px";
+  body.appendChild(paintBox);
+
+  function paintSource(){
+    const d = JETS[P.jet];
+    if (d && d.url) return { src: Models.cache.get(d.url), key: P.jet, roles: d.roles || null };
+    if (P.jet === "custom" && P.custom) return { src: Models.cache.get(P.custom.src), key: "custom" };
+    return null;
+  }
+  function drawPaint(){
+    paintBox.innerHTML = "";
+    const ps = paintSource();
+    if (!ps || !ps.src) return;                 // 프리미티브 기체는 도장 대상이 아니다
+    const list = listParts(ps.src);
+    if (!list.length) return;
+    paintBox.appendChild(el("div","lbl","Paint \u00b7 " + jetDef(P.jet).nameKo));
+    const grid = el("div");
+    grid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:5px 12px";
+    const store = () => (P.paint[ps.key] = P.paint[ps.key] || {});
+    list.slice(0, 24).forEach(p => {
+      const row = el("label");
+      row.style.cssText = "display:flex;align-items:center;gap:8px;font-size:11.5px;cursor:pointer";
+      const sw = el("input"); sw.type = "color";
+      sw.value = (P.paint[ps.key] && P.paint[ps.key][p.name]) || tinkerHex(p.name) || "#8A8A8A";
+      sw.style.cssText = "width:22px;height:18px;padding:0;border:1px solid var(--edge);" +
+                         "background:none;cursor:pointer";
+      sw.addEventListener("input", () => {
+        store()[p.name] = sw.value; save();
+        swapMyJet(); Attract.sync(); drawBay();
+      });
+      const nm = el("span", null, esc(partLabel(p.name))); nm.title = p.name;
+      nm.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      row.appendChild(sw); row.appendChild(nm);
+      grid.appendChild(row);
+    });
+    paintBox.appendChild(grid);
+    const reset = mkBtn("Reset colours","sm", () => {
+      delete P.paint[ps.key]; save(); swapMyJet(); Attract.sync(); drawBay(); drawPaint();
+    });
+    const row2 = el("div"); row2.style.cssText = "display:flex;justify-content:flex-end";
+    row2.appendChild(reset); paintBox.appendChild(row2);
+  }
+  drawPaint();
 
   /* ── 반입 ── */
   body.appendChild(el("div","lbl","Import your own model"));
@@ -4139,7 +4208,7 @@ function openHangar(){
         "border:none;border-bottom:1px solid var(--line2);cursor:pointer";
       const cur = (draft.roles && draft.roles[p.name] !== undefined) ? draft.roles[p.name]
                 : p.engine ? "engine" : p.prop ? "prop" : "";
-      [["","part"],["engine","engine"],["prop","prop"]].forEach(([v,t]) => {
+      [["","part"],["engine","engine"],["prop","prop"],["glow","glow"]].forEach(([v,t]) => {
         const o = el("option", null, t); o.value = v; if (v === cur) o.selected = true; sel.appendChild(o);
       });
       sel.addEventListener("click", e => e.stopPropagation());
