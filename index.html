@@ -2513,9 +2513,11 @@ const Mouse = { x:0, y:0, locked:false, gun:false, msl:false };
 /* 내 기체의 지문. 기종이나 반입 모델 보정이 바뀌면 값이 달라진다. */
 function myJetKey(){
   const c = P.custom;
-  return P.jet + "|" + (P.jet === "custom" && c
+  const bd = JETS[P.jet] && JETS[P.jet].url ? "|" + (Models.cache.has(JETS[P.jet].url) ? 1 : 0) : "";
+  return P.jet + bd + "|" + (P.jet === "custom" && c
     ? c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" + (c.tint ? 1 : 0) +
-      "|" + (c.propAxis || "z") + "|" + JSON.stringify(c.parts || {})
+      "|" + (c.propAxis || "z") + "|" + JSON.stringify(c.parts || {}) +
+      "|" + JSON.stringify(c.roles || {})
     : "");
 }
 
@@ -2695,11 +2697,15 @@ function clearRemotes(){
 /* 상대가 고른 기종의 지문. 반입 모델이 도착하면 값이 바뀌어 기체가 다시 만들어진다. */
 function jetSig(info){
   const k = info.jet || "delta";
+  if (JETS[k] && JETS[k].url){
+    if (!Models.cache.has(JETS[k].url)) Models.fromUrl(JETS[k].url).catch(() => {});
+    return k + "|" + (Models.cache.has(JETS[k].url) ? 1 : 0);
+  }
   if (k !== "custom" || !info.jetCfg) return k;
   const c = info.jetCfg;
   return "custom|" + c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" +
          (c.tint ? 1 : 0) + "|" + (c.propAxis || "z") + "|" + JSON.stringify(c.parts || {}) +
-         "|" + (Models.cache.has(c.src) ? 1 : 0);
+         "|" + JSON.stringify(c.roles || {}) + "|" + (Models.cache.has(c.src) ? 1 : 0);
 }
 function makeRemoteJet(info){
   const col = new THREE.Color(info.color || "#8A8A8A").getHex();
@@ -3652,6 +3658,29 @@ const JETS = {
 };
 function jetDef(key){ return JETS[key] || JETS.delta; }
 
+/* 사이트에 동봉한 반입 모델 — 격납고에 정식 기종으로 뜬다.
+   파일이 도착하기 전에는 기본기로 서 있다가, 도착하면 갈아 끼운다. */
+const BUNDLED = [
+  { key:"sv06", nameKo:"SV06", note:"Tinkercad · delta", url:"sv06.obj",
+    cfg:{ yaw:0, pitch:-90, scale:1, tint:false, parts:{}, roles:{}, propAxis:"z" } }
+];
+for (const b of BUNDLED){
+  JETS[b.key] = { nameKo:b.nameKo, note:b.note, url:b.url,
+    build(colorHex){
+      const src = Models.cache.get(b.url);
+      return src ? fitModel(src, b.cfg, colorHex) : buildJetDelta(colorHex);
+    } };
+}
+function loadBundled(){
+  for (const b of BUNDLED){
+    Models.fromUrl(b.url).then(() => {
+      if (typeof Attract !== "undefined") Attract.sync();
+      if (typeof Game !== "undefined" && Game.jet && P.jet === b.key) swapMyJet();
+      if (typeof renderPilot === "function") renderPilot();
+    }).catch(e => console.warn("bundled model failed:", b.url, e));
+  }
+}
+
 /* ── 외부 모델 보관 (IndexedDB) ───────────────────────────── */
 const IDB = {
   _p:null,
@@ -3705,6 +3734,7 @@ const Models = {
   async fromBuffer(key, buf, ext){
     const obj = await this._parse(buf, ext);
     if (!obj) throw new Error("That file contains no model.");
+    splitByMaterial(obj);
     let meshes = 0;
     obj.traverse(o => { if (o.isMesh) meshes++; });
     if (!meshes) throw new Error("No meshes in that file. Check that geometry was exported.");
@@ -3738,8 +3768,50 @@ const _bx = new THREE.Box3(), _sz = new THREE.Vector3(), _ct = new THREE.Vector3
 const PART_ENGINE = /engine|nozzle|exhaust|thrust|burner|afterburn|jet\b/i;
 const PART_PROP   = /prop|rotor|blade|spinner/i;
 
+const TINKER_AUTO = /^(obj|group)_\d+/i;
 function partName(o){
-  return (o.name || (o.material && !Array.isArray(o.material) && o.material.name) || "").trim();
+  const mat = o.material && !Array.isArray(o.material) ? (o.material.name || "") : "";
+  const nm = (o.name || "").trim();
+  if ((!nm || TINKER_AUTO.test(nm)) && mat) return mat.trim();
+  return nm || mat.trim();
+}
+/* 팅커캐드 재질명 color_16448250 → #FAFAFA */
+function tinkerHex(name){
+  const m = /^color_(\d+)$/i.exec(name || "");
+  return m ? "#" + (parseInt(m[1], 10) & 0xFFFFFF).toString(16).padStart(6, "0") : null;
+}
+function partLabel(name){
+  const h = tinkerHex(name);
+  return h ? "Colour " + h.toUpperCase() : name;
+}
+
+/* 팅커캐드처럼 이름 없이 색(재질)만으로 나뉜 OBJ 는 OBJLoader 가
+   '재질 배열을 가진 메시 하나'로 만든다. 색마다 파트로 다루려면
+   재질 그룹별로 메시를 쪼개야 한다. (OBJ 는 비인덱스 지오메트리라 자를 수 있다) */
+function splitByMaterial(root){
+  const targets = [];
+  root.traverse(o => {
+    if (o.isMesh && Array.isArray(o.material) && o.geometry && !o.geometry.index &&
+        o.geometry.groups && o.geometry.groups.length > 1) targets.push(o);
+  });
+  for (const m of targets){
+    const g = m.geometry, parent = m.parent; if (!parent) continue;
+    m.geometry.groups.forEach((gr, i) => {
+      if (!gr.count) return;
+      const mat = m.material[gr.materialIndex] || m.material[i] || m.material[0];
+      const ng = new THREE.BufferGeometry();
+      for (const k in g.attributes){
+        const a = g.attributes[k];
+        const arr = a.array.slice(gr.start * a.itemSize, (gr.start + gr.count) * a.itemSize);
+        ng.setAttribute(k, new THREE.BufferAttribute(arr, a.itemSize));
+      }
+      const nm = new THREE.Mesh(ng, mat);
+      nm.name = (mat && mat.name) || ("part" + (i + 1));
+      nm.position.copy(m.position); nm.quaternion.copy(m.quaternion); nm.scale.copy(m.scale);
+      parent.add(nm);
+    });
+    parent.remove(m);
+  }
 }
 
 /* 모델 안의 파트 이름 목록 — 격납고가 색 칸을 만들 때 쓴다 */
@@ -3759,7 +3831,7 @@ function fitModel(src, cfg, colorHex){
   const g = new THREE.Group();
   const pivot = new THREE.Group();
   const inner = src.clone(true);
-  const parts = cfg.parts || {};
+  const parts = cfg.parts || {}, roles = cfg.roles || {};
   const partKeys = Object.keys(parts).map(k => k.toLowerCase());
   const engines = [], props = [];
 
@@ -3769,7 +3841,7 @@ function fitModel(src, cfg, colorHex){
     if (!o.isMesh || !o.material) return;
     const nm = partName(o), low = nm.toLowerCase();
     /* 파트별 색: 정확히 같은 이름 우선, 없으면 부분 일치 */
-    let hex = null;
+    let hex = tinkerHex(nm);                 // 팅커캐드 원색이 기본
     if (parts[nm] != null) hex = parts[nm];
     else for (const k of partKeys) if (k && low.includes(k)) { hex = parts[k] ?? parts[Object.keys(parts).find(x => x.toLowerCase() === k)]; break; }
     const dup = m => {
@@ -3780,8 +3852,10 @@ function fitModel(src, cfg, colorHex){
     };
     o.material = Array.isArray(o.material) ? o.material.map(dup) : dup(o.material);
     o.castShadow = o.receiveShadow = false;
-    if (PART_ENGINE.test(nm)) engines.push(o);
-    else if (PART_PROP.test(nm)) props.push(o);
+    const role = roles[nm] !== undefined ? roles[nm]
+               : PART_ENGINE.test(nm) ? "engine" : PART_PROP.test(nm) ? "prop" : "";
+    if (role === "engine") engines.push(o);
+    else if (role === "prop") props.push(o);
   });
 
   pivot.add(inner);
@@ -3962,8 +4036,8 @@ function openHangar(){
   const tune = el("div","brief"); tune.classList.add("hide");
   tune.appendChild(el("div","lbl","Orientation"));
   tune.appendChild(el("div","note",
-    "Every exporter points the nose down a different axis. Rotate until the nose faces " +
-    "<b>toward the lower left</b> — that is the direction of flight."));
+    "Every exporter points the nose down a different axis. Rotate until the nose points " +
+    "<b>up and to the right, away from you</b> — the burner cone marks the tail."));
 
   const prevCv = el("canvas");
   prevCv.style.cssText = "width:100%;max-width:280px;aspect-ratio:4/3;" +
@@ -4010,23 +4084,39 @@ function openHangar(){
     const list = draft ? listParts(Models.cache.get(draft.src)) : [];
     if (!list.length){
       partsBox.appendChild(el("div","note",
-        "This model has no named parts, so it can only be painted as one piece. " +
-        "Name the meshes in your 3D tool (fuselage, wing, canopy, engine, prop…) to colour them separately."));
+        "This model has no separate parts, so it can only be painted as one piece. " +
+        "Name the meshes in your 3D tool — or, in Tinkercad, give each part its own colour: " +
+        "every colour becomes a part here."));
       return;
     }
     partsBox.appendChild(el("div","lbl","Parts \u00b7 " + list.length));
-    const hasProp = list.some(p => p.prop), hasEng = list.some(p => p.engine);
+    const roleOf = p => (draft.roles && draft.roles[p.name] !== undefined) ? draft.roles[p.name]
+                        : p.engine ? "engine" : p.prop ? "prop" : "";
+    const hasProp = list.some(p => roleOf(p) === "prop"), hasEng = list.some(p => roleOf(p) === "engine");
     const grid = el("div"); grid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:4px 10px";
     list.slice(0, 40).forEach(p => {
       const row = el("label"); row.style.cssText = "display:flex;align-items:center;gap:8px;font-size:11.5px;cursor:pointer";
       const sw = el("input"); sw.type = "color";
-      sw.value = (draft.parts && draft.parts[p.name]) || "#8A8A8A";
+      sw.value = (draft.parts && draft.parts[p.name]) || tinkerHex(p.name) || "#8A8A8A";
       sw.style.cssText = "width:22px;height:18px;padding:0;border:1px solid var(--edge);background:none;cursor:pointer";
       sw.addEventListener("input", () => { draft.parts = draft.parts || {}; draft.parts[p.name] = sw.value; repaint(); });
-      const nm = el("span", null, esc(p.name)); nm.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      const nm = el("span", null, esc(partLabel(p.name))); nm.title = p.name;
+      nm.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
       row.appendChild(sw); row.appendChild(nm);
-      if (p.engine) row.appendChild(el("span","lbl","engine"));
-      if (p.prop)   row.appendChild(el("span","lbl","prop"));
+      /* 역할 — 이름으로 잡힌 값이 기본, 손으로 바꿀 수 있다 (팅커캐드처럼 이름이 없을 때) */
+      const sel = el("select");
+      sel.style.cssText = "font-size:10px;padding:1px 2px;background:transparent;color:var(--ink2);" +
+        "border:none;border-bottom:1px solid var(--line2);cursor:pointer";
+      const cur = (draft.roles && draft.roles[p.name] !== undefined) ? draft.roles[p.name]
+                : p.engine ? "engine" : p.prop ? "prop" : "";
+      [["","part"],["engine","engine"],["prop","prop"]].forEach(([v,t]) => {
+        const o = el("option", null, t); o.value = v; if (v === cur) o.selected = true; sel.appendChild(o);
+      });
+      sel.addEventListener("click", e => e.stopPropagation());
+      sel.addEventListener("change", () => {
+        draft.roles = draft.roles || {}; draft.roles[p.name] = sel.value; repaint(); drawParts();
+      });
+      row.appendChild(sel);
       grid.appendChild(row);
     });
     partsBox.appendChild(grid);
@@ -4063,13 +4153,16 @@ function openHangar(){
   const okmsg = m => { status.textContent = m; status.style.color = "var(--good)"; };
 
   function beginTune(srcKey, name, shared){
-    draft = { src:srcKey, name, shared:!!shared, yaw:0, pitch:0, scale:1, tint:false,
-              parts:{}, propAxis:"z" };
+    const src = Models.cache.get(srcKey);
+    let tinker = false;
+    if (src) src.traverse(o => { if (o.isMesh && tinkerHex(partName(o))) tinker = true; });
+    draft = { src:srcKey, name, shared:!!shared, yaw:0, pitch: tinker ? -90 : 0, scale:1,
+              tint:false, parts:{}, roles:{}, propAxis:"z" };
     drawParts();
     tune.classList.remove("hide");
     tintC.checked = false;
     Array.from(ctl.querySelectorAll("input[type=range]")).forEach((r,i) => {
-      r.value = i === 2 ? 1 : 0;
+      r.value = i === 0 ? draft.yaw : i === 1 ? draft.pitch : draft.scale;
       r.parentNode.lastChild.textContent = r.value;
     });
     repaint();
@@ -4157,6 +4250,7 @@ async function restoreCustom(){
   }
 
   restoreCustom();
+  loadBundled();
   /* 월드 생성은 무겁다. 화면이 먼저 그려지고 나서 띄운다. */
   setTimeout(() => { try{ Attract.start(); }catch(e){ console.warn(e); } }, 60);
 
