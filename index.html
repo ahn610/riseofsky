@@ -693,14 +693,14 @@ function load(){
           call: pick(DEFAULT_CALLS) + "-" + (1+(Math.random()*9|0)),
           cred: 1400, bag: { "af.plate":1, "av.rdr":1 }, eq: ["af.plate", null, null],
           k:0, d:0, sorties:0, shots:0, hits:0, streak:0, color: pick(COLORS),
-          jet:"delta", custom:null, paint:{},
+          jet:"sv06", custom:null, paint:{},
           ctrl:"key", sens:1, invertY:false };
     save(r);
   }
   r.eq = (r.eq || []).slice(0, SLOTS);
   while (r.eq.length < SLOTS) r.eq.push(null);
   r.bag = r.bag || {};
-  r.jet = r.jet || "delta";
+  r.jet = r.jet || "sv06";
   if (r.custom === undefined) r.custom = null;
   r.paint = r.paint || {};
   r.ctrl = r.ctrl === "mouse" ? "mouse" : "key";
@@ -964,7 +964,7 @@ const Net = {
          다른 연결이면 그건 새 참가자다 — 갱신으로 삼키면 입장이 조용히 막힌다. */
       if (this.roster.has(pid) && this.conns.get(pid) === c){
         const ex = this.roster.get(pid);
-        ex.call = call; ex.jet = m.jet || "delta"; ex.jetCfg = m.jetCfg || null;
+        ex.call = call; ex.jet = m.jet || "sv06"; ex.jetCfg = m.jetCfg || null;
         this._bcast({t:"roster", roster:this.rosterList()});
         renderFlight(); return;
       }
@@ -987,7 +987,7 @@ const Net = {
     c.metadata = Object.assign({}, c.metadata, {pid});
     this.conns.set(pid, c);
     this.roster.set(pid, {pid, call, color: color || "#8A8A8A", host:false,
-                          jet: jet || "delta", jetCfg: jetCfg || null});
+                          jet: jet || "sv06", jetCfg: jetCfg || null});
     try{ c.send({t:"welcome", sq:this.squawk, hostPid:NETID, live:this.live,
                  roster:this.rosterList()}); }catch(e){}
     this._bcast({t:"roster", roster:this.rosterList()});
@@ -1921,7 +1921,9 @@ const World = {
 };
 
 /* ── 기체 모델 ─────────────────────────────────────────────── */
-function buildJetDelta(colorHex){
+/* 자리표시자 — 동봉 모델(sv06.obj)이 도착하기 전 한 순간, 그리고 반입 모델이
+   깨졌을 때만 쓰인다. 격납고에는 뜨지 않는다. */
+function buildPlaceholder(colorHex){
   const g = new THREE.Group();
   const shell  = new THREE.MeshStandardMaterial({ color:0x2B3540, roughness:.58, metalness:.42 });
   const accent = new THREE.MeshStandardMaterial({ color:colorHex, roughness:.46, metalness:.3 });
@@ -1967,388 +1969,6 @@ function buildJetDelta(colorHex){
     new THREE.MeshBasicMaterial({ color:0xFFCE8A, transparent:true,
       opacity:.0, blending:THREE.AdditiveBlending, depthWrite:false }));
   flame.rotation.x = -Math.PI/2; flame.position.z = 7.4; g.add(flame);
-  g.userData.flame = flame;
-
-  return g;
-}
-
-/* ── 추가 기종 ───────────────────────────────────────────────
-   워크플로로 설계하고 r128 API·게임 계약 두 갈래로 검증한 기체들.
-   계약: 기수 -Z, 전장 약 13유닛, userData.flame 에 Mesh 하나. */
-
-function buildJetProp(colorHex){
-  const g = new THREE.Group();
-
-  // ── 재질 4개만 만들어 재사용
-  const shell  = new THREE.MeshStandardMaterial({ color:0x98A2AC, roughness:.40, metalness:.66 });
-  const accent = new THREE.MeshStandardMaterial({ color:colorHex, roughness:.46, metalness:.30 });
-  const dark   = new THREE.MeshStandardMaterial({ color:0x191F26, roughness:.72, metalness:.22 });
-  const glass  = new THREE.MeshStandardMaterial({ color:0x8FC6E0, roughness:.12, metalness:.10, transparent:true, opacity:.55 });
-
-  // 평판(날개·미익) 헬퍼 : 셰이프 XY 를 두께 중심으로 압출
-  const plate = function(pts, thick){
-    const sp = new THREE.Shape();
-    sp.moveTo(pts[0][0], pts[0][1]);
-    for (let i=1;i<pts.length;i++) sp.lineTo(pts[i][0], pts[i][1]);
-    const geo = new THREE.ExtrudeGeometry(sp, { depth:thick, bevelEnabled:false });
-    geo.translate(0,0,-thick/2);
-    return geo;
-  };
-
-  // ── 엔진 카울링 (z -6.0 ~ -3.0), 인라인 엔진이라 가늘고 길다
-  const cowl = new THREE.Mesh(new THREE.CylinderGeometry(.95, .72, 3.0, 14), shell);
-  cowl.rotation.x = Math.PI/2; cowl.position.z = -4.5; g.add(cowl);
-
-  // ── 주 동체 (z -3.0 ~ +1.5)
-  const mid = new THREE.Mesh(new THREE.CylinderGeometry(.85, .95, 4.5, 14), shell);
-  mid.rotation.x = Math.PI/2; mid.position.z = -0.75; g.add(mid);
-
-  // ── 후방 동체 (z +1.5 ~ +6.0), 뒤로 갈수록 가늘어짐
-  const boom = new THREE.Mesh(new THREE.CylinderGeometry(.28, .85, 4.5, 14), shell);
-  boom.rotation.x = Math.PI/2; boom.position.z = 3.75; g.add(boom);
-
-  // ── 스피너 (원뿔, 기수 -Z 방향)
-  const spin = new THREE.Mesh(new THREE.ConeGeometry(.55, 1.15, 14), shell);
-  spin.rotation.x = -Math.PI/2; spin.position.z = -6.575; g.add(spin);
-
-  // ── 스피너 도장 띠
-  const spinBand = new THREE.Mesh(new THREE.CylinderGeometry(.56, .42, .35, 14), accent);
-  spinBand.rotation.x = Math.PI/2; spinBand.position.z = -6.25; g.add(spinBand);
-
-  // ── 프로펠러 블레이드 3장 (피치를 지오메트리에 구움)
-  const bladeGeo = new THREE.BoxGeometry(.28, 3.1, .10);
-  bladeGeo.rotateY(.42); bladeGeo.translate(0, 1.60, 0);
-  for (let i=0;i<3;i++){
-    const bl = new THREE.Mesh(bladeGeo, dark);
-    bl.rotation.z = i * Math.PI * 2/3;
-    bl.position.z = -6.90;
-    g.add(bl);
-  }
-
-  // ── 회전 프로펠러 디스크 = flame (기수 앞, 양면)
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(3.35, 24),
-    new THREE.MeshBasicMaterial({ color:0xB9D2E6, transparent:true, opacity:0,
-      blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide }));
-  disc.position.z = -7.25; g.add(disc);
-  g.userData.flame = disc;
-
-  // ── 직선 테이퍼 주익 (익폭 16, 저익, 약간의 상반각)
-  [-1,1].forEach(function(s){
-    const w = new THREE.Mesh(plate([
-      [ .85*s,  2.00], [7.90*s,  .62], [8.00*s,  .10],
-      [7.90*s, -.50],  [ .85*s, -1.75]
-    ], .38), shell);
-    w.geometry.rotateX(-Math.PI/2);
-    w.position.set(0, -.42, -.55);
-    w.rotation.z = s * .07;
-    g.add(w);
-    // 날개 뿌리 필렛
-    const fil = new THREE.Mesh(new THREE.SphereGeometry(.70, 10, 6), shell);
-    fil.scale.set(.70, .45, 2.00);
-    fil.position.set(.85*s, -.45, -.55);
-    g.add(fil);
-  });
-
-  // ── 버블 캐노피 + 앞유리
-  const cano = new THREE.Mesh(new THREE.SphereGeometry(.55, 12, 8), glass);
-  cano.scale.set(1.02, 1.00, 2.30);
-  cano.position.set(0, .70, -.75); g.add(cano);
-  const wind = new THREE.Mesh(new THREE.BoxGeometry(.62, .46, .55), glass);
-  wind.position.set(0, .80, -2.05); wind.rotation.x = .30; g.add(wind);
-
-  // ── 캐노피 뒤 등줄기 페어링
-  const spine = new THREE.Mesh(new THREE.CylinderGeometry(.22, .50, 2.40, 8), shell);
-  spine.rotation.x = Math.PI/2; spine.position.set(0, .45, 1.75); g.add(spine);
-
-  // ── 동체 도장 띠
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(.845, .885, .80, 14), accent);
-  band.rotation.x = Math.PI/2; band.position.z = 1.35; g.add(band);
-
-  // ── 수직미익 (하나), 셰이프 +X 가 기수쪽
-  const fin = new THREE.Mesh(plate([
-    [ .40, 0], [3.00, 0], [1.90, 1.90], [1.15, 2.55], [ .45, 2.45]
-  ], .20), shell);
-  fin.geometry.rotateY(Math.PI/2);
-  fin.position.set(0, .25, 6.00); g.add(fin);
-
-  // ── 방향타 (도장색)
-  const rud = new THREE.Mesh(plate([
-    [ .38, .10], [ .42, 2.40], [-.15, 2.32], [-.55, .15]
-  ], .16), accent);
-  rud.geometry.rotateY(Math.PI/2);
-  rud.position.set(0, .25, 6.00); g.add(rud);
-
-  // ── 수평미익
-  [-1,1].forEach(function(s){
-    const t = new THREE.Mesh(plate([
-      [ .30*s,  .90], [2.90*s,  .35], [3.00*s, 0],
-      [2.90*s, -.35], [ .30*s, -.95]
-    ], .24), shell);
-    t.geometry.rotateX(-Math.PI/2);
-    t.position.set(0, .12, 5.10);
-    g.add(t);
-  });
-
-  // ── 복부 라디에이터 스쿠프
-  const scoop = new THREE.Mesh(new THREE.BoxGeometry(1.05, .62, 3.00), shell);
-  scoop.position.set(0, -.82, 1.00); g.add(scoop);
-  const inlet = new THREE.Mesh(new THREE.BoxGeometry(.88, .42, .16), dark);
-  inlet.position.set(0, -.84, -.52); g.add(inlet);
-
-  // ── 배기관 (카울링 좌우)
-  [-1,1].forEach(function(s){
-    const ex = new THREE.Mesh(new THREE.BoxGeometry(.18, .24, 1.60), dark);
-    ex.position.set(.80*s, .12, -4.40);
-    g.add(ex);
-  });
-
-  return g;
-}
-
-function buildJetBipe(colorHex){
-  const g = new THREE.Group();
-
-  // ── 재질 4종 (목재·캔버스 느낌이라 metalness 를 낮게) ──
-  const wood   = new THREE.MeshStandardMaterial({ color:0xD9C49B, roughness:.88, metalness:.04 }); // 캔버스 외피
-  const accent = new THREE.MeshStandardMaterial({ color:colorHex, roughness:.74, metalness:.08 }); // 파일럿 도장
-  const dark   = new THREE.MeshStandardMaterial({ color:0x3A2E24, roughness:.90, metalness:.06 }); // 지주·바퀴·가죽
-  const metal  = new THREE.MeshStandardMaterial({ color:0x9AA1A8, roughness:.44, metalness:.60 }); // 엔진·카울
-
-  // 메시 배치 헬퍼
-  const put = (geo, mat, x, y, z) => {
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(x, y, z);
-    g.add(m);
-    return m;
-  };
-
-  // ── 동체 : 8각 단면, 기수(-Z)가 굵고 꼬리로 갈수록 가늘어짐. z = -3.9 ~ 5.9 ──
-  const body = put(new THREE.CylinderGeometry(.40, 1.00, 9.8, 8), wood, 0, 0, 1.0);
-  body.rotation.x = Math.PI/2;
-
-  // 등판(터틀덱) — 조종석 뒤 척추
-  const deck = put(new THREE.CylinderGeometry(.34, .22, 4.7, 6), accent, 0, .62, 3.25);
-  deck.rotation.x = Math.PI/2;
-
-  // 꼬리 끝 마감 콘
-  const tailCap = put(new THREE.ConeGeometry(.40, .70, 8), wood, 0, 0, 6.20);
-  tailCap.rotation.x = Math.PI/2;
-
-  // ── 기수 : 카울 링 + 노출 성형엔진(7기통) ──
-  const cowl = put(new THREE.CylinderGeometry(1.04, 1.04, .55, 10), metal, 0, 0, -4.10);
-  cowl.rotation.x = Math.PI/2;
-  const crank = put(new THREE.CylinderGeometry(.55, .50, 1.20, 10), dark, 0, 0, -4.90);
-  crank.rotation.x = Math.PI/2;
-  const potGeo = new THREE.CylinderGeometry(.25, .18, 1.00, 6); // 실린더 1개 (바깥쪽 헤드가 굵음)
-  for (let i = 0; i < 7; i++){
-    const a = Math.PI/2 + i * (Math.PI*2/7);
-    const pot = put(potGeo, metal, Math.cos(a)*.92, Math.sin(a)*.92, -4.90);
-    pot.rotation.z = a - Math.PI/2; // 방사형으로 바깥을 향하게
-  }
-
-  // ── 프로펠러 : 허브 + 목재 2엽 + 회전 디스크(flame) ──
-  const hub = put(new THREE.CylinderGeometry(.26, .34, .60, 8), dark, 0, 0, -5.70);
-  hub.rotation.x = Math.PI/2;
-  const blade = put(new THREE.BoxGeometry(.34, 4.20, .10), wood, 0, 0, -6.05);
-  blade.rotation.z = .16;
-
-  // 엔진 출력 표현 = 프로펠러 디스크 (게임이 opacity 를 0~1 로 조절)
-  const flame = new THREE.Mesh(
-    new THREE.CircleGeometry(2.15, 18),
-    new THREE.MeshBasicMaterial({ color:0xFFE2A4, transparent:true, opacity:0,
-      blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide })
-  );
-  flame.position.set(0, 0, -6.15);
-  g.add(flame);
-  g.userData.flame = flame;
-
-  // ── 오픈 콕핏 ──
-  put(new THREE.CylinderGeometry(.46, .40, .50, 10), dark, 0, .50, .35);        // 안쪽 구멍
-  const coam = put(new THREE.TorusGeometry(.50, .11, 6, 12), dark, 0, .70, .35); // 가죽 코밍
-  coam.rotation.x = -Math.PI/2;
-  put(new THREE.BoxGeometry(.50, .34, .34), accent, 0, .82, .98);                // 헤드레스트
-  const glass = put(new THREE.BoxGeometry(.62, .30, .08), dark, 0, .95, -.22);   // 바람막이
-  glass.rotation.x = .35;
-
-  // ── 복엽 주익 : 하익(익폭 15.6) / 상익(익폭 16.4, 살짝 앞으로 스태거) ──
-  put(new THREE.BoxGeometry(15.6, .22, 3.00), wood, 0, -.62, -1.30);
-  put(new THREE.BoxGeometry(16.4, .24, 3.30), wood, 0, 2.75, -1.85);
-  put(new THREE.BoxGeometry(3.40, .28, 3.40), accent, 0, 2.75, -1.85); // 상익 중앙 도장
-  [-1, 1].forEach(s => {
-    put(new THREE.BoxGeometry(1.60, .26, 3.30), accent, s*7.30, 2.75, -1.85);  // 상익 익단 도장
-    put(new THREE.BoxGeometry(1.50, .24, 3.00), accent, s*6.90, -.62, -1.30);  // 하익 익단 도장
-  });
-
-  // ── 지주(strut) 와 브레이싱 와이어 ──
-  const strutGeo = new THREE.CylinderGeometry(.085, .085, 3.20, 6);
-  const cabGeo   = new THREE.CylinderGeometry(.075, .075, 2.30, 6);
-  const wireGeo  = new THREE.CylinderGeometry(.030, .030, 3.60, 4);
-  [-1, 1].forEach(s => {
-    [-2.60, -0.90].forEach(z => put(strutGeo, dark, s*5.60, 1.06, z)); // 익간 지주
-    [-2.90, -1.20].forEach(z => put(cabGeo,   dark, s*0.60, 1.48, z)); // 동체-상익 카베인 지주
-    [-1, 1].forEach(d => {                                             // X 자 브레이싱 와이어
-      const w = put(wireGeo, dark, s*5.60, 1.06, -1.75);
-      w.rotation.x = d * .496;
-    });
-  });
-
-  // ── 미익 ──
-  put(new THREE.BoxGeometry(.14, 1.80, 1.80), accent, 0, 1.10, 5.50); // 수직 미익 + 방향타
-  put(new THREE.BoxGeometry(5.40, .18, 1.50), wood,   0,  .15, 5.50); // 수평 미익
-  const skid = put(new THREE.CylinderGeometry(.07, .10, 1.00, 6), dark, 0, -.55, 5.85);
-  skid.rotation.x = -.50;                                             // 꼬리 스키드
-
-  // ── 고정식 강착장치 (V 자 다리 + 축 + 바퀴) ──
-  const axle = put(new THREE.CylinderGeometry(.08, .08, 3.30, 6), dark, 0, -2.20, -2.45);
-  axle.rotation.z = Math.PI/2;
-  const wheelGeo = new THREE.CylinderGeometry(.62, .62, .26, 12);
-  const capGeo   = new THREE.CylinderGeometry(.26, .26, .30, 10);
-  const legGeo   = new THREE.CylinderGeometry(.075, .075, 1.95, 6);
-  [-1, 1].forEach(s => {
-    const w = put(wheelGeo, dark,   s*1.50, -2.20, -2.45); w.rotation.z = Math.PI/2;
-    const c = put(capGeo,   accent, s*1.50, -2.20, -2.45); c.rotation.z = Math.PI/2; // 휠캡에 개인색
-    [-1, 1].forEach(f => {                                                          // 앞/뒤 다리
-      const leg = put(legGeo, dark, s*0.975, -1.475, -2.45 - f*0.325);
-      leg.rotation.z =  s * .539;
-      leg.rotation.x = -f * .421;
-    });
-  });
-
-  return g;
-}
-
-function buildJetVoid(colorHex){
-  const g = new THREE.Group();
-
-  // 공용 재질 4종 (전 부품 재사용)
-  const shell  = new THREE.MeshStandardMaterial({ color:0x39414E, roughness:.55, metalness:.5 });
-  const dark   = new THREE.MeshStandardMaterial({ color:0x12161C, roughness:.78, metalness:.28 });
-  const accent = new THREE.MeshStandardMaterial({ color:colorHex, roughness:.34, metalness:.55 });
-  const glow   = new THREE.MeshBasicMaterial({ color:colorHex, side:THREE.DoubleSide });
-  // 후방 대형 원반은 면적이 커서 같은 밝기로 두면 시야를 덮는다. 따로 눌러 둔다.
-  const glowDim = new THREE.MeshBasicMaterial({ color:colorHex, side:THREE.DoubleSide,
-    transparent:true, opacity:.42 });
-
-  // ── 육각 코어 동체 (z -3.5 ~ +4.5)
-  const coreGeo = new THREE.CylinderGeometry(2.35, 2.0, 8.0, 6);
-  coreGeo.rotateX(Math.PI/2);                 // 축을 Z 로 (넓은 쪽이 뒤)
-  const core = new THREE.Mesh(coreGeo, shell);
-  core.position.z = .5; g.add(core);
-
-  // ── 기수 프라우 (끝 z -6.7)
-  const noseGeo = new THREE.ConeGeometry(2.0, 3.2, 6);
-  noseGeo.rotateX(-Math.PI/2);                // 뾰족한 끝이 앞(-Z)
-  const nose = new THREE.Mesh(noseGeo, shell);
-  nose.position.z = -5.1; g.add(nose);
-
-  // 기수 접합 도장 칼라 / 발광 밴드
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(1.95,.22,6,6), accent);
-  collar.rotation.z = Math.PI/6; collar.position.z = -3.55; g.add(collar);
-  const band = new THREE.Mesh(new THREE.TorusGeometry(1.18,.12,6,6), glow);
-  band.rotation.z = Math.PI/6; band.position.z = -4.9; g.add(band);
-
-  // 기수 센서 블리스터
-  const sensor = new THREE.Mesh(new THREE.BoxGeometry(.9,.55,1.6), dark);
-  sensor.position.set(0,1.4,-4.0); g.add(sensor);
-
-  // 조종 캐노피
-  const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.0,10,6), dark);
-  canopy.scale.set(1.0,.55,1.5); canopy.position.set(0,1.5,-2.4); g.add(canopy);
-
-  // 등쪽 스파인 / 배쪽 킬
-  const spine = new THREE.Mesh(new THREE.BoxGeometry(.7,.7,3.6), shell);
-  spine.position.set(0,2.1,1.5); g.add(spine);
-  const keel = new THREE.Mesh(new THREE.BoxGeometry(1.1,.9,3.6), dark);
-  keel.position.set(0,-2.0,1.5); g.add(keel);
-
-  // ── 코어를 감싸는 3중 링
-  const ringA = new THREE.Mesh(new THREE.TorusGeometry(4.3,.32,6,16), accent);
-  ringA.position.z = -1.2; g.add(ringA);
-  const ringB = new THREE.Mesh(new THREE.TorusGeometry(4.05,.13,6,16), glow);
-  ringB.position.z = 1.5; g.add(ringB);
-  const ringC = new THREE.Mesh(new THREE.TorusGeometry(2.75,.24,6,12), accent);
-  ringC.position.z = 3.9; g.add(ringC);
-
-  // ── 후방 원반형 추진기
-  const bellGeo = new THREE.CylinderGeometry(3.4,2.4,1.2,12);
-  bellGeo.rotateX(Math.PI/2);
-  const bell = new THREE.Mesh(bellGeo, shell);
-  bell.position.z = 5.1; g.add(bell);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(3.15,.3,6,12), accent);
-  rim.position.z = 5.72; g.add(rim);
-  const throatGeo = new THREE.CylinderGeometry(2.6,2.6,.9,12);
-  throatGeo.rotateX(Math.PI/2);
-  const throat = new THREE.Mesh(throatGeo, dark);
-  throat.position.z = 5.9; g.add(throat);
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(2.05,16), glowDim);
-  disc.position.z = 6.37; g.add(disc);
-
-  // ── 상·하 링 지지대
-  [-1,1].forEach(s=>{
-    const strut = new THREE.Mesh(new THREE.BoxGeometry(.4,2.4,.55), shell);
-    strut.position.set(0, s*3.3, -1.2); g.add(strut);
-  });
-
-  // ── 좌우 대칭 부품
-  [-1,1].forEach(s=>{
-    // 캐논 포드 본체 (z -5.0 ~ +2.6)
-    const podGeo = new THREE.CylinderGeometry(.8,.72,7.6,8);
-    podGeo.rotateX(Math.PI/2);
-    const pod = new THREE.Mesh(podGeo, shell);
-    pod.position.set(s*2.95,-.45,-1.2); g.add(pod);
-
-    // 총구 블록 + 포신 + 발광 링 (앞으로 z -7.8 까지)
-    const muzGeo = new THREE.CylinderGeometry(.95,.95,1.0,8);
-    muzGeo.rotateX(Math.PI/2);
-    const muzzle = new THREE.Mesh(muzGeo, dark);
-    muzzle.position.set(s*2.95,-.45,-5.2); g.add(muzzle);
-    const barGeo = new THREE.CylinderGeometry(.3,.3,2.4,8);
-    barGeo.rotateX(Math.PI/2);
-    const barrel = new THREE.Mesh(barGeo, dark);
-    barrel.position.set(s*2.95,-.45,-6.6); g.add(barrel);
-    const muzRing = new THREE.Mesh(new THREE.TorusGeometry(.42,.1,6,10), glow);
-    muzRing.position.set(s*2.95,-.45,-7.45); g.add(muzRing);
-
-    // 포드-코어 파일런
-    const pylon = new THREE.Mesh(new THREE.BoxGeometry(1.4,.5,2.4), shell);
-    pylon.position.set(s*2.6,-.45,.2); g.add(pylon);
-
-    // 포드 후방 소형 노즐
-    const nozGeo = new THREE.CylinderGeometry(.62,.62,.5,8);
-    nozGeo.rotateX(Math.PI/2);
-    const noz = new THREE.Mesh(nozGeo, dark);
-    noz.position.set(s*2.95,-.45,2.75); g.add(noz);
-    const nozGlow = new THREE.Mesh(new THREE.CircleGeometry(.5,10), glow);
-    nozGlow.position.set(s*2.95,-.45,3.02); g.add(nozGlow);
-
-    // 코어 측면 발광 패널
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(.25,.9,3.6), glow);
-    panel.position.set(s*1.95,.45,.9); g.add(panel);
-
-    // 링 A ↔ 링 B 를 잇는 케이지 스트럿 (핀 마운트)
-    const cage = new THREE.Mesh(new THREE.BoxGeometry(.34,.7,2.9), shell);
-    cage.position.set(s*4.17,0,.15); g.add(cage);
-
-    // 측면 방열 핀 (기울여 장착)
-    const wing = new THREE.Group();
-    wing.position.set(s*5.6,0,.95);
-    wing.rotation.z = s*.25;
-    wing.add(new THREE.Mesh(new THREE.BoxGeometry(2.9,.3,3.3), shell));
-    const strip1 = new THREE.Mesh(new THREE.BoxGeometry(2.2,.16,.6), glow);
-    strip1.position.set(0,.2,-1.0); wing.add(strip1);
-    const strip2 = new THREE.Mesh(new THREE.BoxGeometry(2.2,.16,.6), glow);
-    strip2.position.set(0,.2,1.0); wing.add(strip2);
-    const fence = new THREE.Mesh(new THREE.BoxGeometry(.28,1.7,2.6), accent);
-    fence.position.set(s*1.25,.8,.1); wing.add(fence);
-    g.add(wing);
-  });
-
-  // ── 엔진 화염 (게임이 opacity 0~1 로 제어)
-  const flame = new THREE.Mesh(new THREE.ConeGeometry(1.05,4.6,12),
-    new THREE.MeshBasicMaterial({ color:0x9FD6FF, transparent:true, opacity:0,
-      blending:THREE.AdditiveBlending, depthWrite:false }));
-  flame.rotation.x = Math.PI/2;   // 원뿔 끝이 뒤(+Z)
-  flame.position.z = 8.6; g.add(flame);
   g.userData.flame = flame;
 
   return g;
@@ -2733,7 +2353,7 @@ function clearRemotes(){
 }
 /* 상대가 고른 기종의 지문. 반입 모델이 도착하면 값이 바뀌어 기체가 다시 만들어진다. */
 function jetSig(info){
-  const k = info.jet || "delta";
+  const k = info.jet || "sv06";
   if (JETS[k] && JETS[k].url){
     if (!Models.cache.has(JETS[k].url)) Models.fromUrl(JETS[k].url).catch(() => {});
     return k + "|" + (Models.cache.has(JETS[k].url) ? 1 : 0);
@@ -2746,7 +2366,7 @@ function jetSig(info){
 }
 function makeRemoteJet(info){
   const col = new THREE.Color(info.color || "#8A8A8A").getHex();
-  const k = info.jet || "delta";
+  const k = info.jet || "sv06";
   if (k === "custom" && info.jetCfg && info.jetCfg.shared){
     if (!Models.cache.has(info.jetCfg.src))
       Models.fromUrl(info.jetCfg.src).catch(() => {});   // 도착하면 지문이 바뀐다
@@ -2807,7 +2427,7 @@ function spawnDrones(n){
   for (let i = 0; i < n; i++){
     const a = (i/n)*Math.PI*2 + rnd(-.4,.4), r = rnd(700, 1500);
     const d = {
-      g: buildJet(0x8894A2),
+      g: buildDrone(),
       pos: new THREE.Vector3(Math.cos(a)*r, rnd(420, 820), Math.sin(a)*r),
       quat: new THREE.Quaternion(), vel: new THREE.Vector3(),
       speed: rnd(110, 150), hp: 55, alive: true, fireCd: rnd(1,3),
@@ -3774,18 +3394,14 @@ const JET_SCALE = 2;            // 기체 전체 배율
 const JET_LEN = 13 * JET_SCALE;
 
 /* 기종 등록소. 값은 {nameKo, note, build(colorHex)} */
-const JETS = {
-  delta: { nameKo:"Delta Jet",        note:"Standard issue · balanced",  build: buildJetDelta },
-  prop:  { nameKo:"Piston Fighter",   note:"WWII inline · spinner disc", build: buildJetProp  },
-  bipe:  { nameKo:"Biplane Aerobat",  note:"Two wings · open cockpit",   build: buildJetBipe  },
-  void:  { nameKo:"Orbital Interceptor", note:"Hex core · ring cage",    build: buildJetVoid  }
-};
-function jetDef(key){ return JETS[key] || JETS.delta; }
+const JETS = {};                 // 동봉 기체가 아래 BUNDLED 에서 채워진다
+const DEFAULT_JET = "sv06";
+function jetDef(key){ return JETS[key] || JETS[DEFAULT_JET]; }
 
 /* 사이트에 동봉한 반입 모델 — 격납고에 정식 기종으로 뜬다.
    파일이 도착하기 전에는 기본기로 서 있다가, 도착하면 갈아 끼운다. */
 const BUNDLED = [
-  { key:"sv06", nameKo:"SV06", note:"Twin-engine delta", url:"sv06.obj",
+  { key:"sv06", nameKo:"RF-06 Skylighter", note:"Twin-engine delta", url:"sv06.obj",
     /* 기수는 모델의 -Y(캐노피 쪽). Z-up 이라 피치 -90 으로 눕히고
        요 180 으로 앞뒤를 맞춘다. 어두운색이 노즐 — 좌우 한 쌍만 잡힌다. */
     cfg:{ yaw:180, pitch:-90, scale:1, tint:false, parts:{},
@@ -3795,12 +3411,21 @@ for (const b of BUNDLED){
   JETS[b.key] = { nameKo:b.nameKo, note:b.note, url:b.url,
     build(colorHex){
       const src = Models.cache.get(b.url);
-      if (!src) return buildJetDelta(colorHex);
+      if (!src) return buildPlaceholder(colorHex);
       const cfg = Object.assign({}, b.cfg,
         { parts: Object.assign({}, b.cfg.parts, (P.paint && P.paint[b.key]) || {}) });
       return fitModel(src, cfg, colorHex);
     } };
 }
+if (P.jet !== "custom" && !JETS[P.jet]){ P.jet = DEFAULT_JET; save(); }
+
+/* 훈련 드론 — 같은 기체를 도장 없는 회색으로. 모델 전이면 자리표시자. */
+function buildDrone(){
+  const b = BUNDLED[0], src = Models.cache.get(b.url);
+  if (!src){ const g = buildPlaceholder(0x8A8A8A); g.scale.setScalar(JET_SCALE); return g; }
+  return fitModel(src, Object.assign({}, b.cfg, { tint:true, parts:{} }), 0x8A8A8A);
+}
+
 function loadBundled(){
   for (const b of BUNDLED){
     Models.fromUrl(b.url).then(() => {
@@ -3971,7 +3596,8 @@ function fitModel(src, cfg, colorHex){
     if (!o.isMesh || !o.material) return;
     const nm = partName(o), low = nm.toLowerCase();
     /* 파트별 색: 정확히 같은 이름 우선, 없으면 부분 일치 */
-    let hex = tinkerHex(nm);                 // 팅커캐드 원색이 기본
+    /* 우선순위: 파트 지정색 > 전체 도장(tint) > 팅커캐드 원색 */
+    let hex = cfg.tint ? null : tinkerHex(nm);
     if (parts[nm] != null) hex = parts[nm];
     else for (const k of partKeys) if (k && low.includes(k)) { hex = parts[k] ?? parts[Object.keys(parts).find(x => x.toLowerCase() === k)]; break; }
     const role = roles[nm] !== undefined ? roles[nm]
@@ -4072,7 +3698,7 @@ function fitModel(src, cfg, colorHex){
 
 /* ── 기체 생성 진입점 ─────────────────────────────────────── */
 function buildJet(colorHex, key, cfg){
-  key = key || "delta";
+  key = key || DEFAULT_JET;
   if (key === "custom"){
     const c = cfg || P.custom;
     const src = c && Models.cache.get(c.src);
@@ -4080,7 +3706,7 @@ function buildJet(colorHex, key, cfg){
       try { return fitModel(src, c, colorHex); }
       catch(e){ console.warn("custom model failed to build", e); }
     }
-    return buildJetDelta(colorHex);          // 아직 안 읽혔으면 기본기로
+    return buildPlaceholder(colorHex);          // 아직 안 읽혔으면 자리표시자
   }
   const g = jetDef(key).build(colorHex);
   /* 내장 기체는 코드상 13유닛으로 만들어진다. fitModel 을 거친 것은
