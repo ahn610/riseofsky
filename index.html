@@ -779,7 +779,7 @@ function renderPilot(){
     [["key","Keyboard"],["mouse","Mouse"]].forEach(([k,label]) => {
       const b = el("button", P.ctrl === k ? "on" : "", label); b.type = "button";
       b.addEventListener("click", () => {
-        P.ctrl = k; save(); renderPilot(); paintTips();
+        P.ctrl = k; save(); renderPilot(); paintTips(); renderFlight();
         if (k !== "mouse" && document.pointerLockElement) document.exitPointerLock();
       });
       seg.appendChild(b);
@@ -925,7 +925,9 @@ const Net = {
         this.roster.set(NETID, Object.assign(this.me(), {host:true}));
         this.invited = []; this.openToAll = false; this.requests = [];
         sysLog("Squawk " + sq + " assigned. Only pilots who know it can join.");
-        paintLink(); renderFlight(); return true;
+        paintLink(); renderFlight();
+        try{ NetCheck.afterHost(); }catch(e){}   // 진단은 host() 를 절대 막지 않는다
+        return true;
       }
     }
     this.status = "down"; this.mode = "off";
@@ -1089,10 +1091,9 @@ const Net = {
       this.roster.clear();
       (m.roster||[]).forEach(r => this.roster.set(r.pid, r));
       this.roster.set(NETID, Object.assign(this.me(), {host:false}));
+      this.live = !!m.live;   // 출격은 항상 버튼으로 — 자동 startSortie 없음
       sysLog("Joined the flight on squawk " + this.squawk + ".");
-      paintLink(); renderFlight();
-      if (m.live && !Game.running) startSortie(false);
-      return;
+      paintLink(); renderFlight(); return;
     }
     if (m.t === "roster"){
       const mine = this.roster.get(NETID);
@@ -1139,7 +1140,7 @@ const Net = {
       case "live":
         this.live = !!m.v;
         if (this.isHost) this._bcast(m, fromPid);
-        else if (m.v && !Game.running) startSortie(false);
+        else renderFlight();   // 출격 버튼만 갱신 — 자동 출격 없음
         break;
     }
   },
@@ -1321,27 +1322,50 @@ const NetCheck = {
 
   async run(){
     if (this.state === "running") return;
+    const prev = this.state;                 // ready 문장은 ready 로 '바뀔 때'만 찍는다
     this.state = "running"; this.detail = "Testing…";
     this.broker = this.srflx = this.relay = null;
     renderFlight();
     try {
       const [b, ice] = await Promise.all([this.pingBroker(), this.gatherIce()]);
       this.broker = b;
-      this.srflx = ice.srflx; this.relay = ice.relay;
       if (!b){
         this.state = "blocked";
         this.detail = "Cannot reach the matchmaking broker. A firewall or proxy is blocking it.";
-      } else if (ice.srflx || ice.relay){
-        this.state = "ready";
-        this.detail = "Broker reachable and your public address resolves. " +
-                      "Friends on other networks should be able to connect.";
-      } else {
-        this.state = "local";
-        this.detail = "Broker is reachable, but STUN returned no public address — " +
-                      "this network hides you behind a strict NAT. Pilots on the same " +
-                      "network may connect; pilots elsewhere probably will not.";
-      }
+      } else this._fromIce(ice, prev);
     } catch(e){
+      this.state = "blocked";
+      this.detail = "Network check failed: " + (e && e.message ? e.message : "unknown");
+    }
+    renderFlight();
+  },
+
+  /* ICE 결과 -> ready / local. ready 상세는 여기서 딱 한 번 로그한다 */
+  _fromIce(ice, prev){
+    this.srflx = ice.srflx; this.relay = ice.relay;
+    if (ice.srflx || ice.relay){
+      this.state = "ready";
+      this.detail = "Broker reachable and your public address resolves. " +
+                    "Friends on other networks should be able to connect.";
+      if (prev !== "ready") sysLog(this.detail);   // 재검사 때마다 같은 문장을 찍지 않는다
+    } else {
+      this.state = "local";
+      this.detail = "Broker is reachable, but STUN returned no public address — " +
+                    "this network hides you behind a strict NAT. Pilots on the same " +
+                    "network may connect; pilots elsewhere probably will not.";
+    }
+  },
+
+  /* host() 가 성공한 직후 — 브로커는 이미 답했으니 STUN 만 본다.
+     두 번째 Peer 도, 9초 대기도 없다. 절대 throw 하지 않는다. */
+  async afterHost(){
+    if (this.state === "running") return;
+    const prev = this.state;
+    this.state = "running"; this.detail = "Testing…";
+    this.broker = true; this.srflx = this.relay = null;
+    renderFlight();
+    try { this._fromIce(await this.gatherIce(), prev); }
+    catch(e){
       this.state = "blocked";
       this.detail = "Network check failed: " + (e && e.message ? e.message : "unknown");
     }
@@ -1402,22 +1426,35 @@ function sectionHead(title, hint){
 
 function netCheckStrip(){
   const map = {
-    idle:    { c:"var(--ink3)", t:"Not checked" },
     running: { c:"var(--ink2)", t:"Checking…" },
     ready:   { c:"var(--ink)",  t:"Ready" },
-    local:   { c:"var(--red)",  t:"Local only" },
+    local:   { c:"var(--red)",  t:"Same network only" },
     blocked: { c:"var(--red)",  t:"Blocked" }
   };
-  const m = map[NetCheck.state] || map.idle;
+  const m = map[NetCheck.state];
   const w = el("div","strip");
-  const dot = el("i"); dot.style.background = m.c; w.appendChild(dot);
-  w.appendChild(el("span", null, "Connectivity &mdash; " + esc(m.t)));
+  if (m){   // idle 은 점 없이 조용한 한 줄
+    const dot = el("i"); dot.style.background = m.c; w.appendChild(dot);
+    w.appendChild(el("span", null, "Reach &mdash; " + esc(m.t)));
+  } else w.appendChild(el("span","lbl","Trouble connecting?"));
   w.appendChild(el("span","rule"));
-  const btn = mkBtn(NetCheck.state === "idle" ? "Run check" : "Re-check", "sm",
-                    () => NetCheck.run());
+  const btn = mkBtn(m ? "Re-test" : "Test link", "sm", () => NetCheck.run());
   if (NetCheck.state === "running") btn.disabled = true;
   w.appendChild(btn);
   return w;
+}
+
+/* 현재 조작 방식 한 줄 — 출격 버튼 아래와 첫 화면에 같이 쓴다 */
+function controlNote(){
+  const touch = "ontouchstart" in window && P.ctrl !== "mouse";   // 휴대폰엔 화면 조종간이 뜬다
+  return el("div","note", P.ctrl === "mouse"
+    ? "Mouse — the stick follows the pointer, Z centres it · L click guns · " +
+      "R click missile (needs lock) · Shift boost · Esc releases, then returns. " +
+      "Switch to keyboard in ☰ Controls."
+    : touch
+    ? "Touch — drag the left stick to fly · Guns · Msl (needs lock) · Boost on the right."
+    : "Keyboard — W/S pitch · A/D roll · Q/E yaw · Shift boost · Space guns · " +
+      "F missile (needs lock) · Esc return. Switch to mouse in ☰ Controls.");
 }
 
 function renderFlight(){
@@ -1439,7 +1476,9 @@ function renderFlight(){
 
   /* ── 편대에 들어가 있지 않을 때 ── */
   if (!Net.up){
-    pane.appendChild(netCheckStrip());
+    pane.appendChild(el("div","lbl","Briefing"));
+    pane.appendChild(el("div","note",
+      "Invite-only air combat. No server — browsers talk straight to each other."));
 
     const acts = el("div","acts two");
     const mk = (title, sub, fn) => {
@@ -1469,18 +1508,36 @@ function renderFlight(){
     jr.appendChild(inp); jr.appendChild(go);
     pane.appendChild(jr);
 
+    pane.appendChild(el("div","note",
+      "A squawk is four digits, each 0–7 — a real transponder code. " +
+      "Only pilots who know yours can reach you."));
+    pane.appendChild(controlNote());
+    if (NetCheck.state === "local" || NetCheck.state === "blocked")
+      pane.appendChild(el("div","warn", esc(NetCheck.detail)));
     if (Net.lastError)
       pane.appendChild(el("div","warn", esc(Net.lastError)));
-    else if (NetCheck.state === "local" || NetCheck.state === "blocked")
-      pane.appendChild(el("div","warn", esc(NetCheck.detail)));
-    else
-      pane.appendChild(el("div","note",
-        "A squawk is four digits, each 0–7 — a real transponder code. " +
-        "Only pilots who know yours can reach you."));
+    pane.appendChild(netCheckStrip());   // 항상 맨 아래
     return;
   }
 
   /* ── 편대 안 ── */
+  /* 출격 버튼 — 전투 중이면 맨 위, 아니면 맨 아래. 한 곳에서만 만든다 */
+  const launchBtn = () => Net.isHost
+    ? mkBtn(Net.live ? "Join the fight" : "Launch the flight", "pri", () => {
+        Net.setLive(true); startSortie(false);
+      })
+    : mkBtn(Net.live ? "Launch" : "Waiting for host", Net.live ? "pri" : "", () => {
+        if (Net.live) startSortie(false);
+      });
+  const hot = Net.live && !Game.running;
+  if (hot){
+    const lb = el("div","brief"); lb.style.alignItems = "flex-start";   // 버튼은 제 폭으로
+    lb.appendChild(el("div","lbl","Fight is on"));
+    lb.appendChild(launchBtn());
+    lb.appendChild(controlNote());
+    pane.appendChild(lb);
+  }
+
   const sq = el("div","sqk");
   sq.appendChild(el("div","big num", esc(Net.squawk)));
   const meta = el("div","meta");
@@ -1499,6 +1556,11 @@ function renderFlight(){
     sq.appendChild(cp);
   }
   pane.appendChild(sq);
+  if (Net.isHost){
+    if (NetCheck.state === "local")
+      pane.appendChild(el("div","warn","Friends on other networks may not reach you."));
+    pane.appendChild(netCheckStrip());
+  }
 
   /* 승인 대기 요청 (호스트) */
   if (Net.isHost && Net.requests.length){
@@ -1580,19 +1642,10 @@ function renderFlight(){
     pane.appendChild(iv);
   }
 
-  /* 출격 */
+  /* 출격 / 이탈 */
   const act = el("div"); act.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
-  if (Net.isHost){
-    act.appendChild(mkBtn(Net.live ? "Join the fight" : "Launch the flight", "pri", () => {
-      Net.setLive(true); startSortie(false);
-    }));
-    act.appendChild(mkBtn("Disband","dgr", () => Net.leaveFlight()));
-  } else {
-    act.appendChild(mkBtn(Net.live ? "Launch" : "Waiting for host", Net.live ? "pri" : "", () => {
-      if (Net.live) startSortie(false);
-    }));
-    act.appendChild(mkBtn("Leave","dgr", () => Net.leaveFlight()));
-  }
+  if (!hot) act.appendChild(launchBtn());
+  act.appendChild(mkBtn(Net.isHost ? "Disband" : "Leave", "dgr", () => Net.leaveFlight()));
   pane.appendChild(act);
 }
 
@@ -2285,6 +2338,7 @@ function freshMe(){
     msl:CFG.msl + m.msl, mslMax:CFG.msl + m.msl,
     fireCd:0, alive:true, respawnAt:0,
     k:0, d:0, streak:0, lockT:0, lockTgt:null, locked:false,
+    noLockT:0, nearDist:0, nearInCone:false, nearOutRange:false,   // 조준 안내용
     outT:0, warn:"", mods:m
   };
 }
@@ -2298,6 +2352,7 @@ function spawnPoint(me){
   me.vel.copy(FWD).applyQuaternion(me.quat).multiplyScalar(me.speed);
   me.hp = me.hpMax; me.ammo = me.ammoMax; me.msl = me.mslMax;
   me.alive = true; me.outT = 0; me.lockT = 0; me.locked = false; me.lockTgt = null;
+  me.noLockT = 0; me.nearDist = 0; me.nearInCone = false; me.nearOutRange = false;
   camInit = false;                 // 카메라를 새 위치로 즉시 스냅
 }
 
@@ -2861,6 +2916,7 @@ function stepMe(dt){
         v:[r1(me.vel.x),r1(me.vel.y),r1(me.vel.z)], call:P.call});
       Chat.push("ops","", P.call + " — Fox two", true);
     } else if (me.msl <= 0) showMsg("Winchester","No missiles remaining", "#E11900");
+    else me.noLockT = now() + 600;   // 탄은 있는데 록온 없음 — HUD 스트립만, 소리·팝업 없음
   }
   if (!wantMsl) me.mslHeld = false;
 
@@ -2874,15 +2930,21 @@ function stepMe(dt){
 function stepLock(dt){
   const me = Game.me;
   _fwd.copy(FWD).applyQuaternion(me.quat);
-  let best = null, bestDot = Math.cos(CFG.lockCone), bestKey = null;
+  const cone = Math.cos(CFG.lockCone);
+  let best = null, bestDot = cone, bestKey = null;
+  let near = Infinity, nearCone = false;   // 최근접 적 — HUD 안내 문구용
   const test = (pos, key) => {
     const to = pos.clone().sub(me.pos); const dist = to.length();
-    if (dist > CFG.lockRange) return;
     const dot = _fwd.dot(to.normalize());
+    if (dist < near){ near = dist; nearCone = dot > cone; }
+    if (dist > CFG.lockRange) return;
     if (dot > bestDot){ bestDot = dot; best = pos; bestKey = key; }
   };
   for (const [pid, r] of Game.remotes) if (r.st !== "down") test(r.pos, pid);
   for (const d of Game.drones) if (d.alive) test(d.pos, "d:" + d.name);
+  const any = near < Infinity;
+  me.nearDist = any ? near : 0; me.nearInCone = any && nearCone;
+  me.nearOutRange = any && near > CFG.lockRange;
 
   if (bestKey && bestKey === me.lockTgt){
     me.lockT += dt;
@@ -3009,7 +3071,7 @@ function paintTips(){
        ["Shift","Boost"],["T","Radio"],["Tab","Score"],["C","View"],
        ["Esc","Release, then return"]]
     : [["W/S","Pitch"],["A/D","Roll"],["Q/E","Yaw"],["Shift","Boost"],
-       ["Space","Guns"],["F","Missile"],["T","Radio"],["Tab","Score"],
+       ["Space","Guns"],["F","Missile (needs lock)"],["T","Radio"],["Tab","Score"],
        ["C","View"],["Esc","Return"]];
   t.innerHTML = "";
   rows.forEach(([k, v]) => {
@@ -3255,8 +3317,8 @@ function drawHUD(){
   bar(c, bx, by + 22, 104, 6, me.hp/me.hpMax,
       me.hp/me.hpMax > .4 ? HUD_G : HUD_R, "HULL " + Math.round(me.hp));
   txt(c, "RDS " + me.ammo, bx, by + 42, "left", 10.5, me.ammo < 80 ? HUD_R : HUD_A);
-  txt(c, "MSL " + "◆".repeat(me.msl) + "◇".repeat(Math.max(0, me.mslMax - me.msl)),
-      bx + 66, by + 42, "left", 10.5, me.msl ? HUD_A : HUD_D);
+  txt(c, "MSL " + "◆".repeat(me.msl) + "◇".repeat(Math.max(0, me.mslMax - me.msl)) + (me.locked ? " · LOCK" : ""),
+      bx + 66, by + 42, "left", 10.5, me.msl && me.locked ? HUD_A : HUD_D);   // 록온 전엔 흐리게
 
   /* ── 레이더 ── */
   const rr = 54, rx = cx, ry = H - rr - 48;
@@ -3306,6 +3368,7 @@ function drawHUD(){
   }
 
   /* ── 피격 표시 — 어디서 맞았는지 2초간 ── */
+  let hitPx = -1e9, hitPy = -1e9;             // 셰브론 자리 — 조준 안내가 피한다
   if (me.hitAt && now() - me.hitAt < 2000){
     const age = (now() - me.hitAt) / 2000;
     c.globalAlpha = 1 - age;
@@ -3318,6 +3381,7 @@ function drawHUD(){
       const ang = Math.atan2(to.dot(r), to.dot(f));
       const up  = to.dot(u);
       const R = 132, px = cx + Math.sin(ang) * R, py = cy - (up > 0 ? .35 : -.35) * R * Math.abs(Math.cos(ang));
+      hitPx = px; hitPy = py;
       c.strokeStyle = HUD_R; c.lineWidth = 2.4;
       c.save(); c.translate(px, py); c.rotate(ang);
       c.beginPath(); c.moveTo(-9, 7); c.lineTo(0, -5); c.lineTo(9, 7); c.stroke();
@@ -3325,6 +3389,34 @@ function drawHUD(){
     }
     txt(c, "HIT · " + (me.lastHitCall || "Bandit"), cx, cy + 142, "center", 13, HUD_R);
     c.globalAlpha = 1;
+  }
+
+  /* ── 조준 안내 — 십자 아래 한 줄 (모서리 R34 와 경고 cy+70 사이) ── */
+  /* 죽어 있으면 안 그린다 — 정지된 록 상태로 '쏘라'고 하면 안 된다.
+     피격 셰브론이 바로 그 자리에 오면 그 프레임은 셰브론에 양보한다. */
+  if (me.alive && !(Math.abs(hitPy - (cy + 46)) < 14 && Math.abs(hitPx - cx) < 90)){
+    const sy = cy + 46;
+    if (me.noLockT > now()){
+      txt(c, "NO LOCK", cx, sy, "center", 11, HUD_R);
+    } else if (me.locked && me.msl < 1){
+      txt(c, "WINCHESTER", cx, sy, "center", 11, HUD_D);   // 록은 있는데 쏠 게 없다
+    } else if (me.locked){
+      const lp = missileTargetPos(me.lockTgt);
+      const km = lp ? (lp.distanceTo(me.pos)/1000).toFixed(1) : "-";
+      txt(c, "SHOOT · " + km + " km", cx, sy, "center", 11, HUD_A);
+    } else if (me.lockTgt && me.lockT > 0){
+      /* 문구 + 1px 진행선 — 채운 사각형 없이 선 두 개 */
+      const bw = 56, bx0 = cx - 12, k = clamp(me.lockT/CFG.lockTime, 0, 1);
+      txt(c, "LOCK", bx0 - 8, sy, "right", 11, HUD_A);
+      c.lineWidth = 1;
+      c.strokeStyle = HUD_D; line(c, bx0, sy, bx0 + bw, sy);
+      c.strokeStyle = HUD_A; line(c, bx0, sy, bx0 + bw*k, sy);
+    } else if (me.nearInCone && me.nearOutRange){
+      txt(c, "OUT OF RANGE " + (me.nearDist/1000).toFixed(1) + " / " + (CFG.lockRange/1000).toFixed(1) + " km",
+          cx, sy, "center", 11, HUD_A);
+    } else if (me.nearDist > 0 && !me.nearOutRange && !me.nearInCone){
+      txt(c, "TURN TO LOCK", cx, sy, "center", 11, HUD_A);
+    }
   }
 
   /* ── 경고 ── */
