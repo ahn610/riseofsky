@@ -3642,12 +3642,24 @@ function fitModel(src, cfg, colorHex){
 
   /* 후연 — 삼각기둥을 옆으로 뉘여 노즐에서 뒤로 뽑는다.
      원점이 노즐 끝에 오도록 만들어 두면 배치가 단순해진다. */
-  const mkFlame = (w, len) => {
-    const geo = new THREE.CylinderGeometry(w * .26, w, len, 3, 1, true);
-    geo.rotateX(Math.PI / 2);      // 축을 Z(뒤)로. 넓은 쪽이 노즐, 뾰족한 쪽이 끝
-    geo.rotateZ(Math.PI / 2);      // 평평한 면이 아래로 — 옆으로 뉘인 모양
-    geo.scale(1, .62, 1);          // 납작하게
-    geo.translate(0, 0, len / 2);  // 원점 = 노즐 끝
+  /* 쐐기 — 밑면은 평평한 직사각형, 양옆은 삼각형(팅커캐드 Wedge).
+     노즐에서는 노즐 높이만큼 서 있다가 뒤로 갈수록 높이가 0 이 되어
+     끝에서 선이 된다. 원점은 노즐 끝 가운데. */
+  const mkFlame = (w, h, len) => {
+    const x = w / 2, y0 = -h / 2, y1 = h / 2;
+    const A = [-x, y0, 0], B = [x, y0, 0], C = [x, y1, 0], D = [-x, y1, 0],
+          E = [-x, y0, len], F = [x, y0, len];
+    const t = (p, q, r) => [...p, ...q, ...r];
+    const pos = new Float32Array([
+      ...t(A, B, C), ...t(A, C, D),     // 노즐 쪽 면 — 직사각형 (노즐 안에 묻힌다)
+      ...t(A, E, F), ...t(A, F, B),     // 밑면 — 평평한 직사각형
+      ...t(D, C, F), ...t(D, F, E),     // 윗면 — 경사진 직사각형
+      ...t(A, D, E),                    // 왼쪽 옆면 — 삼각형
+      ...t(B, F, C)                     // 오른쪽 옆면 — 삼각형
+    ]);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.computeVertexNormals();
     return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
       color: 0xC6E9FF, transparent: true, opacity: 0,
       blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
@@ -3676,15 +3688,15 @@ function fitModel(src, cfg, colorHex){
     for (const e of nozzles){
       eb.setFromObject(e); eb.getCenter(ec); eb.getSize(es2);
       /* g 는 이 시점에 원점·무회전이라 월드 좌표를 그대로 쓸 수 있다 */
-      const w = clamp(Math.max(es2.x, es2.y) * .62, .26, 1.4);
-      const f = mkFlame(w, 6.8);
+      const w = clamp(es2.x * 1.05, .3, 2.6), h = clamp(es2.y * 1.05, .2, 1.8);
+      const f = mkFlame(w, h, 7.5);
       f.position.set(ec.x, ec.y, eb.max.z + .15);
       g.add(f); flames.push(f);
     }
   } else {
     const back = isFinite(_bx.max.z) ? _bx.max.z : 5;
-    const w = clamp(Math.min(_sz.x, _sz.y) * .14, .3, 1.2);
-    const f = mkFlame(w, 6.8);
+    const w = clamp(Math.min(_sz.x, _sz.y) * .28, .5, 2.2), h = w * .55;
+    const f = mkFlame(w, h, 7.5);
     f.position.z = back + .15;
     g.add(f); flames.push(f);
   }
