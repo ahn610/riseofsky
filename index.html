@@ -593,7 +593,7 @@ button{cursor:pointer;background:none;border:none}
   <div id="msg" class="ovl hide"><div class="big"></div><div class="sub"></div></div>
   <div id="tips" class="ovl">
     <span><b>W/S</b> Pitch</span><span><b>A/D</b> Roll</span><span><b>Q/E</b> Yaw</span>
-    <span><b>Shift/Ctrl</b> Throttle</span><span><b>R</b> Burner</span>
+    <span><b>Shift</b> Boost</span>
     <span><b>Space</b> Guns</span><span><b>F</b> Missile</span><span><b>T</b> Radio</span>
     <span><b>Tab</b> Score</span><span><b>C</b> View</span><span><b>Esc</b> Return</span>
   </div>
@@ -906,10 +906,11 @@ const Net = {
   get isHost(){ return this.mode === "host"; },
 
   me(){ return { pid:NETID, call:P.call, color:P.color, host:this.isHost,
-                 jet:P.jet, jetCfg:(P.custom && P.custom.shared) ? P.custom : null }; },
+                 jet:P.jet, jetCfg:(P.custom && P.custom.shared) ? P.custom : null,
+                 paint:(P.paint && P.paint[P.jet]) || null }; },
   rosterList(){ return [...this.roster.values()]
       .map(r => ({pid:r.pid, call:r.call, color:r.color, host:r.host,
-                  jet:r.jet, jetCfg:r.jetCfg})); },
+                  jet:r.jet, jetCfg:r.jetCfg, paint:r.paint || null})); },
 
   /* ── 개설 ── */
   async host(){
@@ -965,29 +966,30 @@ const Net = {
       if (this.roster.has(pid) && this.conns.get(pid) === c){
         const ex = this.roster.get(pid);
         ex.call = call; ex.jet = m.jet || "sv06"; ex.jetCfg = m.jetCfg || null;
+        ex.paint = cleanPaint(m.paint);
         this._bcast({t:"roster", roster:this.rosterList()});
         renderFlight(); return;
       }
       const allowed = this.openToAll || this.invited.includes(call);
       if (!allowed){
         const ex = this.requests.find(r => r.pid === pid);
-        if (ex){ ex.conn = c; ex.jet = m.jet; ex.jetCfg = m.jetCfg; ex.color = m.color; }
-        else this.requests.push({pid, call, conn:c, color:m.color, jet:m.jet, jetCfg:m.jetCfg});
+        if (ex){ ex.conn = c; ex.jet = m.jet; ex.jetCfg = m.jetCfg; ex.color = m.color; ex.paint = m.paint; }
+        else this.requests.push({pid, call, conn:c, color:m.color, jet:m.jet, jetCfg:m.jetCfg, paint:m.paint});
         try{ c.send({t:"wait"}); }catch(e){}
         sysLog(call + " is requesting to join."); renderFlight(); paintAsk(); return;
       }
-      this._admit(c, pid, call, m.color, m.jet, m.jetCfg); return;
+      this._admit(c, pid, call, m.color, m.jet, m.jetCfg, m.paint); return;
     }
     const pid = (c.metadata && c.metadata.pid) || this._pidOf(c);
     if (!pid) return;
     this._route(pid, m);
   },
 
-  _admit(c, pid, call, color, jet, jetCfg){
+  _admit(c, pid, call, color, jet, jetCfg, paint){
     c.metadata = Object.assign({}, c.metadata, {pid});
     this.conns.set(pid, c);
     this.roster.set(pid, {pid, call, color: color || "#8A8A8A", host:false,
-                          jet: jet || "sv06", jetCfg: jetCfg || null});
+                          jet: jet || "sv06", jetCfg: jetCfg || null, paint: cleanPaint(paint)});
     try{ c.send({t:"welcome", sq:this.squawk, hostPid:NETID, live:this.live,
                  roster:this.rosterList()}); }catch(e){}
     this._bcast({t:"roster", roster:this.rosterList()});
@@ -1000,7 +1002,7 @@ const Net = {
     const i = this.requests.findIndex(r => r.pid === pid); if (i < 0) return;
     const r = this.requests.splice(i,1)[0];
     if (!this.invited.includes(r.call)) this.invited.push(r.call);
-    if (r.conn) this._admit(r.conn, r.pid, r.call, r.color, r.jet, r.jetCfg);
+    if (r.conn) this._admit(r.conn, r.pid, r.call, r.color, r.jet, r.jetCfg, r.paint);
     renderFlight(); paintAsk();
   },
   deny(pid){
@@ -1841,6 +1843,7 @@ const World = {
     s.add(sun); this.sun = sun;
     const rim = new THREE.DirectionalLight(0x9CC4E6, 0.34);
     rim.position.set(1200, 400, -1100); s.add(rim);
+    try { s.environment = bakeEnv(r); } catch(e){ console.warn("env map failed", e); }
 
     this.buildTerrain();
     this.buildWater();
@@ -1873,7 +1876,7 @@ const World = {
     }
     g.setAttribute("color", new THREE.BufferAttribute(col, 3));
     g.computeVertexNormals();
-    const m = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:.97, metalness:.02 });
+    const m = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:.97, metalness:.02, envMapIntensity:0 });
     this.terrain = new THREE.Mesh(g, m);
     this.scene.add(this.terrain);
   },
@@ -1882,7 +1885,7 @@ const World = {
     const g = new THREE.PlaneGeometry(16000, 16000, 1, 1);
     g.rotateX(-Math.PI/2);
     const m = new THREE.MeshStandardMaterial({
-      color:0x2F76AE, roughness:.18, metalness:.5, transparent:true, opacity:.95 });
+      color:0x2F76AE, roughness:.18, metalness:.5, transparent:true, opacity:.95, envMapIntensity:0 });
     this.water = new THREE.Mesh(g, m);
     this.water.position.y = SEA_Y;
     this.scene.add(this.water);
@@ -1977,6 +1980,10 @@ function buildPlaceholder(colorHex){
 /* 추력 표현 — 후연 밝기와 프로펠러 회전을 한 번에.
    v 는 0~1. 내장 기체는 userData.flame 하나, 반입 모델은 flames/props 배열. */
 const _spinAx = { x:new THREE.Vector3(1,0,0), y:new THREE.Vector3(0,1,0), z:new THREE.Vector3(0,0,1) };
+/* 부스터 쐐기의 두 상태. 순항(v≈.35)에서는 idle, 부스트(v≈.8+)에서 hot 으로 간다. */
+const BOOST_DEFAULT = "#C6E9FF";
+const BOOST_IDLE = { alpha:.32, glow:.25, len:1 };
+const BOOST_HOT  = { alpha:.96, glow:3.6, len:1.35 };
 function setThrust(g, v, dt){
   if (!g) return;
   const u = g.userData;
@@ -1985,7 +1992,15 @@ function setThrust(g, v, dt){
     for (const m of u.glows){ const mm = m.material; if (mm) mm.emissiveIntensity = k; }
   }
   const fl = u.flames || (u.flame ? [u.flame] : null);
-  if (fl) for (const f of fl) if (f.material) f.material.opacity = v;
+  if (fl) for (const f of fl){
+    const mm = f.material; if (!mm) continue;
+    if (f.userData.wedge){
+      const b = clamp((v - .42) / .4, 0, 1);            // 순항 0 → 부스트 1
+      mm.opacity = BOOST_IDLE.alpha + (BOOST_HOT.alpha - BOOST_IDLE.alpha) * b;
+      mm.emissiveIntensity = BOOST_IDLE.glow + (BOOST_HOT.glow - BOOST_IDLE.glow) * b;
+      f.scale.z = BOOST_IDLE.len + (BOOST_HOT.len - BOOST_IDLE.len) * b;
+    } else mm.opacity = v;                               // 자리표시자의 옛 원뿔 후연
+  }
   if (u.props && dt){
     const ax = _spinAx[u.propAxis] || _spinAx.z;
     const w = (1.4 + v * 22) * dt;           // 공회전 + 추력 비례
@@ -2356,7 +2371,7 @@ function jetSig(info){
   const k = info.jet || "sv06";
   if (JETS[k] && JETS[k].url){
     if (!Models.cache.has(JETS[k].url)) Models.fromUrl(JETS[k].url).catch(() => {});
-    return k + "|" + (Models.cache.has(JETS[k].url) ? 1 : 0);
+    return k + "|" + (Models.cache.has(JETS[k].url) ? 1 : 0) + "|" + JSON.stringify(info.paint || {});
   }
   if (k !== "custom" || !info.jetCfg) return k;
   const c = info.jetCfg;
@@ -2372,7 +2387,7 @@ function makeRemoteJet(info){
       Models.fromUrl(info.jetCfg.src).catch(() => {});   // 도착하면 지문이 바뀐다
     return buildJet(col, "custom", info.jetCfg);
   }
-  return buildJet(col, k, null);
+  return buildJet(col, k, null, info.paint || {});   // 상대의 도장 — 내 것이 아니라
 }
 function remoteFor(pid){
   let r = Game.remotes.get(pid);
@@ -3409,13 +3424,23 @@ const BUNDLED = [
 ];
 for (const b of BUNDLED){
   JETS[b.key] = { nameKo:b.nameKo, note:b.note, url:b.url,
-    build(colorHex){
+    build(colorHex, paint){
       const src = Models.cache.get(b.url);
       if (!src) return buildPlaceholder(colorHex);
-      const cfg = Object.assign({}, b.cfg,
-        { parts: Object.assign({}, b.cfg.parts, (P.paint && P.paint[b.key]) || {}) });
+      const pt = paint || (P.paint && P.paint[b.key]) || {};
+      const cfg = Object.assign({}, b.cfg, { parts: Object.assign({}, b.cfg.parts, pt) });
       return fitModel(src, cfg, colorHex);
     } };
+}
+/* 네트워크로 온 도장 — 이름→#rrggbb 만 남긴다 */
+function cleanPaint(p){
+  if (!p || typeof p !== "object") return null;
+  const out = {}; let n = 0;
+  for (const k in p){
+    if (n >= 40) break;
+    if (typeof k === "string" && k.length <= 40 && /^#[0-9a-f]{6}$/i.test(String(p[k]))){ out[k] = p[k]; n++; }
+  }
+  return n ? out : null;
 }
 if (P.jet !== "custom" && !JETS[P.jet]){ P.jet = DEFAULT_JET; save(); }
 
@@ -3587,7 +3612,7 @@ function fitModel(src, cfg, colorHex){
   const pivot = new THREE.Group();
   const inner = src.clone(true);
   const parts = cfg.parts || {}, roles = cfg.roles || {};
-  const partKeys = Object.keys(parts).map(k => k.toLowerCase());
+  const partKeys = Object.keys(parts).filter(k => k !== "__booster").map(k => k.toLowerCase());
   const engines = [], props = [], glows = [];
 
   /* 클론은 재질을 공유한다. 색을 바꾸려면 반드시 복제해야
@@ -3603,12 +3628,21 @@ function fitModel(src, cfg, colorHex){
     const role = roles[nm] !== undefined ? roles[nm]
                : PART_ENGINE.test(nm) ? "engine" : PART_PROP.test(nm) ? "prop" : "";
     const dup = m => {
-      const c = m.clone();
+      /* glTF 는 작가가 정한 PBR 값을 존중한다. OBJ 는 Phong 으로 들어오니
+         금속 도장으로 바꾼다 — 환경맵이 하늘을 비춰 준다. */
+      let c;
+      if (m.isMeshStandardMaterial) c = m.clone();
+      else {
+        c = new THREE.MeshStandardMaterial({ name: m.name || "",
+          color: m.color ? m.color.clone() : new THREE.Color(0x8A8A8A),
+          metalness: .85, roughness: .32 });
+      }
       if (cfg.tint) c.color = new THREE.Color(colorHex);
       if (hex) c.color = new THREE.Color(hex);
-      if (role === "glow" && c.emissive){      // 제 색으로 달아오르게
+      if (role === "glow"){                    // 제 색으로 달아오르게 — 무광이어야 빛이 산다
         c.emissive = c.color.clone();
         c.emissiveIntensity = .22;
+        c.metalness = .1; c.roughness = .55;
       }
       return c;
     };
@@ -3645,6 +3679,9 @@ function fitModel(src, cfg, colorHex){
   /* 쐐기 — 밑면은 평평한 직사각형, 양옆은 삼각형(팅커캐드 Wedge).
      노즐에서는 노즐 높이만큼 서 있다가 뒤로 갈수록 높이가 0 이 되어
      끝에서 선이 된다. 원점은 노즐 끝 가운데. */
+  /* 쐐기가 곧 부스터다. 평소에는 제 색의 반투명 유리처럼 보이고, 부스트를 켜면
+     달아올라 빛난다. 색은 도장의 __booster 칸 — 없으면 얼음빛. */
+  const boostHex = parts.__booster || cfg.booster || BOOST_DEFAULT;
   const mkFlame = (w, h, len) => {
     /* 윗면은 노즐 가운데 높이에서 시작한다 — 위로 튀어나오지 않게 위쪽 절반을 뺐다 */
     const x = w / 2, y0 = -h / 2, y1 = 0;
@@ -3661,9 +3698,13 @@ function fitModel(src, cfg, colorHex){
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     geo.computeVertexNormals();
-    return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-      color: 0xC6E9FF, transparent: true, opacity: 0,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    const bc = new THREE.Color(boostHex);
+    const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: bc, emissive: bc.clone(), emissiveIntensity: BOOST_IDLE.glow,
+      metalness: 0, roughness: .35, transparent: true, opacity: BOOST_IDLE.alpha,
+      depthWrite: false, side: THREE.DoubleSide }));
+    f.userData.wedge = true;
+    return f;
   };
 
   const flames = [];
@@ -3709,8 +3750,48 @@ function fitModel(src, cfg, colorHex){
   return g;
 }
 
+/* ── 환경맵 ──────────────────────────────────────────────────
+   금속 도장은 비출 것이 있어야 금속으로 보인다. 하늘 그라디언트에
+   땅색 반구와 해 하나를 그린 작은 등장방형 텍스처를 PMREM 으로 굽는다.
+   렌더러마다 GPU 자원이 따로라 월드와 미리보기가 각자 한 번씩 굽는다. */
+function bakeEnv(renderer){
+  const W = 128, H = 64, d = new Uint8Array(W * H * 3);
+  const mix = (a, b, t) => a + (b - a) * t;
+  const sm  = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  /* 해 — 왼쪽 위 45°. 8비트라 1 을 넘지 못하니 너비로 존재감을 준다 */
+  const sunU = .32, sunV = .78;
+  for (let y = 0; y < H; y++){
+    const v = 1 - (y + .5) / H, h = v * 2 - 1;          // h: -1 지평 아래 … +1 천정
+    for (let x = 0; x < W; x++){
+      const u = (x + .5) / W;
+      let r, g, b;
+      if (h >= 0){
+        const t1 = sm(-.02, .22, h), t2 = sm(.1, .7, h);
+        r = mix(.886, .514, t1); g = mix(.941, .737, t1); b = mix(.984, .910, t1);
+        r = mix(r, .173, t2);    g = mix(g, .475, t2);    b = mix(b, .745, t2);
+      } else {
+        const t = sm(.05, .6, -h);
+        r = mix(.62, .36, t); g = mix(.64, .38, t); b = mix(.58, .33, t);
+      }
+      const du = Math.min(Math.abs(u - sunU), 1 - Math.abs(u - sunU)) * 2, dv = (v - sunV) * 1.4;
+      const sun = 1 - sm(.02, .09, Math.hypot(du, dv));
+      r = mix(r, 1, sun); g = mix(g, .98, sun); b = mix(b, .93, sun);
+      const i = (y * W + x) * 3;
+      d[i] = r * 255; d[i + 1] = g * 255; d[i + 2] = b * 255;
+    }
+  }
+  const tex = new THREE.DataTexture(d, W, H, THREE.RGBFormat);
+  tex.encoding = THREE.sRGBEncoding;
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.needsUpdate = true;
+  const pm = new THREE.PMREMGenerator(renderer);
+  const out = pm.fromEquirectangular(tex).texture;
+  pm.dispose(); tex.dispose();
+  return out;
+}
+
 /* ── 기체 생성 진입점 ─────────────────────────────────────── */
-function buildJet(colorHex, key, cfg){
+function buildJet(colorHex, key, cfg, paint){
   key = key || DEFAULT_JET;
   if (key === "custom"){
     const c = cfg || P.custom;
@@ -3721,7 +3802,7 @@ function buildJet(colorHex, key, cfg){
     }
     return buildPlaceholder(colorHex);          // 아직 안 읽혔으면 자리표시자
   }
-  const g = jetDef(key).build(colorHex);
+  const g = jetDef(key).build(colorHex, paint);
   /* 내장 기체는 코드상 13유닛으로 만들어진다. fitModel 을 거친 것은
      JET_LEN 에서 이미 배율이 반영돼 있으니 건드리지 않는다. */
   if (!g.userData.custom) g.scale.setScalar(JET_SCALE);
@@ -3748,6 +3829,7 @@ const Preview = {
       d.position.set(-3, 4, 5); this.scene.add(d);
       const d2 = new THREE.DirectionalLight(0xBFDCF5, .5);
       d2.position.set(4, -1, -4); this.scene.add(d2);
+      try { this.scene.environment = bakeEnv(this.r); } catch(e){}
       this.cam = new THREE.PerspectiveCamera(34, this.W/this.H, .1, 400);
       this.cam.position.set(15, 8.5, 17);
       this.cam.lookAt(0, 0, 0);
@@ -3757,9 +3839,7 @@ const Preview = {
   shot(group, target2d){
     if (!this.init() || !group) return;
     this.scene.add(group);
-    const fl = group.userData.flame;
-    const keep = fl ? fl.material.opacity : 0;
-    if (fl) fl.material.opacity = .5;
+    setThrust(group, .62, 0);               // 살짝 달아오른 상태로 찍는다
     try {
       this.r.render(this.scene, this.cam);
       const c = target2d.getContext("2d");
@@ -3767,7 +3847,7 @@ const Preview = {
       c.clearRect(0, 0, target2d.width, target2d.height);
       c.drawImage(this.r.domElement, 0, 0, target2d.width, target2d.height);
     } catch(e){}
-    if (fl) fl.material.opacity = keep;
+    setThrust(group, .35, 0);
     this.scene.remove(group);
   }
 };
@@ -3849,6 +3929,23 @@ function openHangar(){
       row.appendChild(sw); row.appendChild(nm);
       grid.appendChild(row);
     });
+    /* 부스터 — 파트가 아니라 쐐기 후연의 색. 같은 도장 묶음에 __booster 로 저장한다 */
+    {
+      const row = el("label");
+      row.style.cssText = "display:flex;align-items:center;gap:8px;font-size:11.5px;cursor:pointer";
+      const sw = el("input"); sw.type = "color";
+      sw.value = (P.paint[ps.key] && P.paint[ps.key].__booster) || BOOST_DEFAULT;
+      sw.style.cssText = "width:22px;height:18px;padding:0;border:1px solid var(--edge);" +
+                         "background:none;cursor:pointer";
+      sw.addEventListener("input", () => {
+        store().__booster = sw.value; save();
+        swapMyJet(); Attract.sync(); drawBay();
+      });
+      const nm = el("span", null, "Booster");
+      nm.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      row.appendChild(sw); row.appendChild(nm);
+      grid.appendChild(row);
+    }
     paintBox.appendChild(grid);
     const reset = mkBtn("Reset colours","sm", () => {
       delete P.paint[ps.key]; save(); swapMyJet(); Attract.sync(); drawBay(); drawPaint();
