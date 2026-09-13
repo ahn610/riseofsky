@@ -3646,7 +3646,8 @@ function fitModel(src, cfg, colorHex){
      노즐에서는 노즐 높이만큼 서 있다가 뒤로 갈수록 높이가 0 이 되어
      끝에서 선이 된다. 원점은 노즐 끝 가운데. */
   const mkFlame = (w, h, len) => {
-    const x = w / 2, y0 = -h / 2, y1 = h / 2;
+    /* 윗면은 노즐 가운데 높이에서 시작한다 — 위로 튀어나오지 않게 위쪽 절반을 뺐다 */
+    const x = w / 2, y0 = -h / 2, y1 = 0;
     const A = [-x, y0, 0], B = [x, y0, 0], C = [x, y1, 0], D = [-x, y1, 0],
           E = [-x, y0, len], F = [x, y0, len];
     const t = (p, q, r) => [...p, ...q, ...r];
