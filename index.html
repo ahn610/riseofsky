@@ -1004,7 +1004,8 @@ const Net = {
     const i = this.requests.findIndex(r => r.pid === pid); if (i < 0) return;
     const r = this.requests.splice(i,1)[0];
     if (!this.invited.includes(r.call)) this.invited.push(r.call);
-    if (r.conn) this._admit(r.conn, r.pid, r.call, r.color, r.jet, r.jetCfg, r.paint);
+    if (r.conn && r.conn.open) this._admit(r.conn, r.pid, r.call, r.color, r.jet, r.jetCfg, r.paint);
+    else sysLog(r.call + " is no longer connected.");
     renderFlight(); paintAsk();
   },
   deny(pid){
@@ -1017,6 +1018,12 @@ const Net = {
 
   _pidOf(c){ for (const [k,v] of this.conns) if (v === c) return k; return null; },
   _dropGuest(c){
+    /* 승인을 기다리다 나간 사람 — 요청 줄을 남기면 나중에 끊긴 연결로 '입장'시킨다 */
+    const ri = this.requests.findIndex(r => r.conn === c);
+    if (ri >= 0){
+      const q = this.requests.splice(ri, 1)[0];
+      sysLog(q.call + " stopped waiting."); renderFlight(); paintAsk();
+    }
     const pid = this._pidOf(c); if (!pid) return;
     const r = this.roster.get(pid);
     this.conns.delete(pid); this.roster.delete(pid); this.states.delete(pid);
@@ -1158,7 +1165,7 @@ const Net = {
     this.states.set(NETID, Object.assign({pid:NETID}, mine, {at:now()}));
     const l = [], tnow = now();
     for (const [pid,s] of this.states){
-      if (pid !== NETID && tnow - s.at > 8000) continue;
+      if (pid !== NETID && tnow - s.at > 3000) continue;
       l.push({pid, p:s.p, q:s.q, v:s.v, sp:s.sp, hp:s.hp, st:s.st,
               fr:s.fr, ab:s.ab, k:s.k, d:s.d});
     }
@@ -1590,9 +1597,11 @@ function renderFlight(){
       const dot = el("span","dot"); dot.style.color = r.color || "#8A8A8A";
       row.appendChild(dot);
       const st = Net.states.get(r.pid);
+      const flying = st && st.st !== "off";
       row.appendChild(el("div","who","<b>" + esc(r.call) + "</b><i>" +
-        (st ? (st.st === "down" ? "Down" : "Airborne") : "Standing by") + "</i>"));
-      if (st) row.appendChild(el("div","kd","<b>" + (st.k || 0) + "</b> / " + (st.d || 0)));
+        (flying ? (st.st === "down" ? "Down" : "Airborne") : "Standing by") + "</i>"));
+      /* k/d 는 상대가 보낸 값이다 — 숫자로 만들지 않으면 HTML 로 그대로 들어간다 */
+      if (flying) row.appendChild(el("div","kd","<b>" + (Number(st.k) | 0) + "</b> / " + (Number(st.d) | 0)));
       if (r.host) row.appendChild(el("span","tag host","Host"));
       if (r.pid === NETID) row.appendChild(el("span","tag you","You"));
       else row.appendChild(mkBtn("Trade","sm", () => openTrade(r.pid)));
@@ -1650,7 +1659,28 @@ function renderFlight(){
 }
 
 /* ── 거래 ─────────────────────────────────────────────────── */
-const pendingOffers = new Map();   // 내가 보낸 제안 id -> payload
+const pendingOffers = new Map();   // 내가 보낸 제안 id -> {give, want, to, timer}
+const OFFER_TTL = 60000;           // 보낸 쪽: 이 시간이 지나면 떼어 둔 몫을 돌려받는다
+const OFFER_ACCEPT = 45000;        // 받은 쪽: 이 안에만 수락할 수 있다 (전송 지연 여유 15초)
+const hasPart = id => typeof id === "string" && Object.prototype.hasOwnProperty.call(PARTS, id);
+
+/* 보낸 제안을 거두고 떼어 둔 몫을 돌려받는다 */
+function refundOffer(id){
+  const o = pendingOffers.get(id); if (!o) return false;
+  clearTimeout(o.timer); pendingOffers.delete(id);
+  P.cred += o.give.cred || 0;
+  (o.give.items || []).forEach(k => P.bag[k] = (P.bag[k] || 0) + 1);
+  save(); renderPilot();
+  return true;
+}
+addEventListener("beforeunload", () => { [...pendingOffers.keys()].forEach(refundOffer); });
+
+/* 네트워크로 온 제안 — 숫자는 0 이상 정수, 부품은 실제 카탈로그 id 만 */
+function cleanSide(x){
+  x = (x && typeof x === "object") ? x : {};
+  const items = Array.isArray(x.items) ? [...new Set(x.items.filter(hasPart))].slice(0, 16) : [];
+  return { cred: Math.max(0, Math.floor(Number(x.cred)) || 0), items };
+}
 function bagList(){ return Object.keys(P.bag).filter(k => P.bag[k] > 0 && PARTS[k]); }
 
 function openTrade(toPid){
@@ -1716,9 +1746,18 @@ function openTrade(toPid){
     }
     if (give.cred > P.cred){ sysLog("You do not have that many credits."); return; }
     for (const id of give.items) if (!P.bag[id]){ sysLog("You no longer hold one of those parts."); return; }
+    if (!Net.up || !Net.roster.has(toPid)){ sysLog("That pilot is no longer in the flight."); closeModal(); return; }
     const id = "t" + Math.random().toString(36).slice(2, 10);
     const payload = { t:"trade", sub:"offer", id, from:NETID, fromCall:P.call, to:toPid, give, want };
-    pendingOffers.set(id, payload);
+    /* 내놓을 몫은 보낼 때 떼어 둔다(에스크로). 같은 부품을 두 사람에게 동시에
+       내놓거나 답을 기다리는 사이 써 버려서 복제되는 일을 막는다. 거절·만료면 돌려받는다. */
+    P.cred -= give.cred;
+    give.items.forEach(k => { P.bag[k]--; if (!P.bag[k]) delete P.bag[k]; });
+    save(); renderPilot();
+    const who = target.call;
+    pendingOffers.set(id, { give, want, to:toPid, timer: setTimeout(() => {
+      if (refundOffer(id)) sysLog("Your offer to " + who + " expired. Your side was returned.");
+    }, OFFER_TTL) });
     Net.send(payload);
     sysLog("Offer sent to " + target.call + ".");
     closeModal();
@@ -1754,8 +1793,17 @@ function showOffer(m){
   if (lack.length)
     body.appendChild(el("div","warn","You cannot accept — " + esc(lack.join(", ")) + "."));
 
+  const got = now();
   const accept = () => {
     if (lack.length) return;
+    /* 상대가 떠났거나 제안이 만료됐으면 내 쪽만 거래가 확정된다 — 막는다 */
+    if (!Net.up || !Net.roster.has(m.from)){
+      sysLog("That pilot has left the flight. The offer is void."); closeModal(); return;
+    }
+    if (now() - got > OFFER_ACCEPT){ sysLog("That offer has expired."); closeModal(); return; }
+    if (m.want.cred > P.cred || m.want.items.some(id => !P.bag[id])){
+      sysLog("You no longer have what they asked for."); closeModal(); return;
+    }
     P.cred += (m.give.cred || 0) - (m.want.cred || 0);
     (m.give.items || []).forEach(id => P.bag[id] = (P.bag[id] || 0) + 1);
     (m.want.items || []).forEach(id => { P.bag[id]--; if (!P.bag[id]) delete P.bag[id]; });
@@ -1773,17 +1821,22 @@ function showOffer(m){
 }
 
 Net.on("trade", m => {
-  if (m.sub === "offer"){ if (m.to === NETID) showOffer(m); return; }
+  if (m.sub === "offer"){
+    if (m.to === NETID) showOffer(Object.assign({}, m, {
+      fromCall: String(m.fromCall || "").slice(0, 14), give: cleanSide(m.give), want: cleanSide(m.want) }));
+    return;
+  }
   if (m.to !== NETID) return;
   const mine = pendingOffers.get(m.id); if (!mine) return;
-  pendingOffers.delete(m.id);
-  if (m.sub === "decline"){ sysLog((m.call || "They") + " declined the trade."); return; }
+  if (m.from !== mine.to) return;               // 제안받은 사람만 답할 수 있다
+  if (m.sub === "decline"){
+    refundOffer(m.id);
+    sysLog((m.call || "They") + " declined the trade. Your side was returned."); return;
+  }
   if (m.sub === "accept"){
-    P.cred += (mine.want.cred || 0) - (mine.give.cred || 0);
+    clearTimeout(mine.timer); pendingOffers.delete(m.id);
+    P.cred += mine.want.cred || 0;              // 내 몫은 보낼 때 이미 떼어 뒀다
     (mine.want.items || []).forEach(id => P.bag[id] = (P.bag[id] || 0) + 1);
-    (mine.give.items || []).forEach(id => {
-      if (P.bag[id]){ P.bag[id]--; if (!P.bag[id]) delete P.bag[id]; }
-    });
     save(); renderPilot();
     sysLog("Trade complete with " + (m.call || "your wingman") + ".");
   }
@@ -2127,13 +2180,21 @@ const Game = {
 const K = Object.create(null);
 const touch = { on:false, sx:0, sy:0, gun:false, msl:false, up:false, dn:false, ab:false };
 
+/* 물리 키 위치로 읽는다. e.key 는 한글 입력 상태에서 W 가 "ㅈ" 로 와서 조작이 먹지 않는다. */
+function keyOf(e){
+  const c = e.code || "";
+  if (/^Key[A-Z]$/.test(c)) return c.slice(3).toLowerCase();
+  if (c === "Space") return " ";
+  if (c === "ShiftLeft" || c === "ShiftRight") return "Shift";
+  return e.key.length === 1 ? e.key.toLowerCase() : e.key;
+}
 addEventListener("keydown", e => {
   if (!Game.running) return;
   if (Game.chatting){
     if (e.key === "Escape"){ closeChat(); e.preventDefault(); }
     return;
   }
-  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const k = keyOf(e);
   K[k] = true;
   if (k === "Tab"){ Game.showBoard = true; renderBoard(); $("#board").classList.remove("hide"); e.preventDefault(); }
   if (k === "t"){ openChat(); e.preventDefault(); }
@@ -2148,7 +2209,7 @@ addEventListener("keydown", e => {
   if (k === " ") e.preventDefault();
 }, {passive:false});
 addEventListener("keyup", e => {
-  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const k = keyOf(e);
   K[k] = false;
   if (k === "Tab"){ Game.showBoard = false; $("#board").classList.add("hide"); }
 });
@@ -2241,7 +2302,7 @@ function myJetKey(){
   return P.jet + bd + "|" + (P.jet === "custom" && c
     ? c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" + (c.tint ? 1 : 0) +
       "|" + (c.propAxis || "z") + "|" + JSON.stringify(c.parts || {}) +
-      "|" + JSON.stringify(c.roles || {})
+      "|" + JSON.stringify(c.roles || {}) + "|" + JSON.stringify((P.paint && P.paint.custom) || {})
     : "");
 }
 
@@ -2393,8 +2454,6 @@ function startSortie(solo){
   Chat.push("ops","", Game.solo ? "Solo training sortie." : "Airborne. Engagement area radius 2.3 km.", true);
 
   Game.running = true; Game.last = now(); Game.netAcc = 0;
-  clearInterval(Game.netTimer);
-  Game.netTimer = setInterval(netTick, 62);      // 약 16Hz
   cancelAnimationFrame(Game.raf);
   Game.raf = requestAnimationFrame(loop);
 }
@@ -2403,7 +2462,8 @@ function endSortie(){
   if (!Game.running) return;
   Game.running = false;
   cancelAnimationFrame(Game.raf);
-  clearInterval(Game.netTimer); Game.netTimer = 0;
+  clearRemotes();
+  Game.missiles.forEach(m => World.scene.remove(m.g)); Game.missiles.length = 0;
   const aw = $("#away"); if (aw) aw.remove();
   closeChat();
   $("#board").classList.add("hide"); Game.showBoard = false;
@@ -2425,22 +2485,29 @@ function clearRemotes(){
 function jetSig(info){
   const k = info.jet || "sv06";
   if (JETS[k] && JETS[k].url){
-    if (!Models.cache.has(JETS[k].url)) Models.fromUrl(JETS[k].url).catch(() => {});
+    const u = JETS[k].url;
+    if (!Models.cache.has(u) && !Models.pending.has(u) && !Models.failed.has(u))
+      Models.fromUrl(u).catch(() => {});
     return k + "|" + (Models.cache.has(JETS[k].url) ? 1 : 0) + "|" + JSON.stringify(info.paint || {});
   }
-  if (k !== "custom" || !info.jetCfg) return k;
-  const c = info.jetCfg;
+  if (k !== "custom") return k;
+  const c = cleanJetCfg(info.jetCfg);
+  if (!c) return "custom|none";
   return "custom|" + c.src + "|" + c.yaw + "|" + c.pitch + "|" + c.scale + "|" +
-         (c.tint ? 1 : 0) + "|" + (c.propAxis || "z") + "|" + JSON.stringify(c.parts || {}) +
-         "|" + JSON.stringify(c.roles || {}) + "|" + (Models.cache.has(c.src) ? 1 : 0);
+         (c.tint ? 1 : 0) + "|" + c.propAxis + "|" + JSON.stringify(c.parts) +
+         "|" + JSON.stringify(c.roles) + "|" + JSON.stringify(info.paint || {}) +
+         "|" + (Models.cache.has(c.src) ? 1 : 0);
 }
 function makeRemoteJet(info){
   const col = new THREE.Color(info.color || "#8A8A8A").getHex();
   const k = info.jet || "sv06";
-  if (k === "custom" && info.jetCfg && info.jetCfg.shared){
-    if (!Models.cache.has(info.jetCfg.src))
-      Models.fromUrl(info.jetCfg.src).catch(() => {});   // 도착하면 지문이 바뀐다
-    return buildJet(col, "custom", info.jetCfg);
+  if (k === "custom"){
+    const cfg = cleanJetCfg(info.jetCfg);
+    /* 그 사람 브라우저에만 있는 모델이면 기본기로 — 내 반입 모델로 대신 그리지 않는다 */
+    if (!cfg) return buildJet(col, DEFAULT_JET, null, {});
+    if (!Models.cache.has(cfg.src) && !Models.pending.has(cfg.src) && !Models.failed.has(cfg.src))
+      Models.fromUrl(cfg.src).catch(() => {});           // 도착하면 지문이 바뀐다
+    return buildJet(col, "custom", cfg, cleanPaint(info.paint) || {});
   }
   return buildJet(col, k, null, info.paint || {});   // 상대의 도장 — 내 것이 아니라
 }
@@ -2466,6 +2533,12 @@ function remoteFor(pid){
 function syncRemotes(dt){
   for (const [pid, s] of Net.states){
     if (pid === NETID) continue;
+    /* 작전실로 돌아갔거나(off) 소식이 끊긴 기체는 얼어붙은 채 남기지 않는다 */
+    if (s.st === "off" || now() - s.at > 3000){
+      const gone = Game.remotes.get(pid);
+      if (gone){ World.scene.remove(gone.g); Game.remotes.delete(pid); }
+      continue;
+    }
     const r = remoteFor(pid);
     const info = Net.roster.get(pid); if (info) r.call = info.call;
     if (s.p) r.tp.set(s.p[0], s.p[1], s.p[2]);
@@ -2473,7 +2546,7 @@ function syncRemotes(dt){
     if (s.v) r.vel.set(s.v[0], s.v[1], s.v[2]);
     r.hp = s.hp != null ? s.hp : r.hp;
     r.st = s.st || "fly"; r.fr = s.fr || 0;
-    r.k = s.k || 0; r.d = s.d || 0;
+    r.k = Number(s.k) | 0; r.d = Number(s.d) | 0;
     /* 지연 보정: 마지막 패킷 이후 흐른 시간만큼 속도로 밀어준다 */
     const lag = clamp((now() - s.at) / 1000, 0, .45);
     const pred = r.tp.clone().addScaledVector(r.vel, lag);
@@ -2693,7 +2766,12 @@ function stepMissiles(dt){
     if (!dead && m.mine){
       for (const [pid, r] of Game.remotes){
         if (r.st === "down") continue;
-        if (segHit(prev, m.pos, r.pos, 32)){ queueDmg(pid, CFG.mslDmg); Boom.at(m.pos, 80, .9); dead = true; break; }
+        if (segHit(prev, m.pos, r.pos, 32)){
+          /* 노린 상대는 제 화면의 같은 미사일로 스스로 피해를 매긴다(아래 "me" 분기).
+             여기서도 보내면 한 발이 두 번 들어간다. 빗나가 다른 기체에 맞은 것만 보낸다. */
+          if (pid !== m.tgt) queueDmg(pid, CFG.mslDmg);
+          Boom.at(m.pos, 80, .9); dead = true; break;
+        }
       }
       if (!dead) for (const d of Game.drones){
         if (!d.alive) continue;
@@ -2705,7 +2783,7 @@ function stepMissiles(dt){
       }
     } else if (!dead && !m.mine && m.tgt === "me"){
       if (Game.me.alive && segHit(prev, m.pos, Game.me.pos, 32)){
-        takeDamage(CFG.mslDmg, m.byCall || "Missile"); Boom.at(m.pos, 80, .9); dead = true;
+        takeDamage(CFG.mslDmg, m.byCall || "Missile", m.byPid); Boom.at(m.pos, 80, .9); dead = true;
       }
     }
     if (dead){ World.scene.remove(m.g); Game.missiles.splice(i,1); }
@@ -2750,9 +2828,9 @@ function die(byCall, byPid){
 Net.on("down", m => {
   if (m.victim === NETID) return;
   addFeed(m.kcall || "—", m.vcall || "??", false);
-  if (m.killer === NETID) creditKill(m.vcall || "bandit");
+  if (m.killer === NETID) creditKill(m.vcall || "bandit", true);
 });
-function onKill(name){ creditKill(name); addFeed(P.call, name, false); }
+function onKill(name){ creditKill(name, false); addFeed(P.call, name, false); }
 /* 전리품 — 격추한 쪽이 제 브라우저에서 굴린다. 패킷을 늘리지 않고,
    상대 로드아웃도 노출하지 않는다. 드론(onKill)은 여기로 오지 않는다. */
 function salvage(){
@@ -2766,15 +2844,15 @@ function salvage(){
   return PARTS[id].n;
 }
 
-function creditKill(victimName){
+function creditKill(victimName, loot){
   const me = Game.me;
   me.k++; me.streak++; P.k++;
   P.cred += CFG.killCred;
   if (me.streak > P.streak) P.streak = me.streak;
-  const loot = salvage();
+  const got = loot ? salvage() : null;      // 파일럿 격추만 — 훈련 드론은 부품을 떨구지 않는다
   save(); renderPilot();
   showMsg("Splash", victimName + " · +" + CFG.killCred + " cr" +
-          (loot ? " · salvaged " + loot : ""), HUD_A);
+          (got ? " · salvaged " + got : ""), HUD_A);
 }
 function addFeed(killer, victim, meDown){
   const box = $("#feed");
@@ -2956,12 +3034,14 @@ function stepLock(dt){
 }
 
 Net.on("msl", m => {
-  if (!m.p) return;
+  if (!Game.running || !m.p) return;
   const pos = new THREE.Vector3(m.p[0], m.p[1], m.p[2]);
   const q = new THREE.Quaternion(m.q[0], m.q[1], m.q[2], m.q[3]);
   const v = new THREE.Vector3(m.v[0], m.v[1], m.v[2]);
-  const mm = launchMissile(pos, q, v, m.tgt === NETID || m.tgt == null ? null : m.tgt, false);
-  mm.byCall = m.call;
+  /* "d:이름" 은 쏜 사람의 훈련 드론이다 — 내 드론과 이름이 같아도 그걸 쫓지 않는다 */
+  const tk = m.tgt === NETID || m.tgt == null || String(m.tgt).startsWith("d:") ? null : m.tgt;
+  const mm = launchMissile(pos, q, v, tk, false);
+  mm.byCall = m.call; mm.byPid = m.from || null;   // 격추되면 쏜 사람에게 공이 간다
   if (m.tgt === NETID){ mm.tgt = "me"; showMsg("Missile", "Launched by " + (m.call||"bandit"), "#E11900"); }
 });
 
@@ -2999,8 +3079,8 @@ function renderBoard(){
   list.forEach(x => {
     const rw = el("div","rw" + (x.me ? " me" : ""));
     rw.appendChild(el("span","n", esc(x.call)));
-    rw.appendChild(el("span","v num", String(x.k)));
-    rw.appendChild(el("span","v num", String(x.d)));
+    rw.appendChild(el("span","v num", String(Number(x.k) | 0)));
+    rw.appendChild(el("span","v num", String(Number(x.d) | 0)));
     rows.appendChild(rw);
   });
 }
@@ -3023,9 +3103,13 @@ function myPacket(){
    백그라운드 탭에서 rAF 는 0Hz 로 멈추지만 setInterval 은 살아 있다.
    호스트는 모두의 상태를 중계하므로, 호스트가 탭을 옮겼다고 편대 전체가
    얼어붙으면 안 된다. 시뮬레이션은 멈춰도 중계와 연결은 유지된다. */
+/* 출격 중이 아니면 "off" 만 보낸다. 받는 쪽은 그 기체를 하늘에서 치운다.
+   이 타이머는 출격과 무관하게 기동 때 한 번 켜진다 — 호스트가 작전실로
+   돌아가도 게스트들의 중계는 멈추지 않는다. */
+const OFF_PACKET = { st:"off" };
 function netTick(){
-  if (!Net.up || !Game.me) return;
-  const pk = myPacket();
+  if (!Net.up) return;
+  const pk = (Game.running && Game.me) ? myPacket() : OFF_PACKET;
   Net.pumpSnap(pk);
   Net.pushPres(pk);
 }
@@ -3525,6 +3609,32 @@ for (const b of BUNDLED){
     } };
 }
 /* 네트워크로 온 도장 — 이름→#rrggbb 만 남긴다 */
+/* 반입 모델 경로 — index.html 옆에 동봉된 파일의 상대경로만. 스킴(:), 절대경로, ".." 는 거부 */
+function safeModelPath(s){
+  return typeof s === "string" && s.length <= 120 &&
+    /^(?![\/\\])(?!.*\.\.)[\p{L}\p{N}_\-. \/]+\.(glb|gltf|obj)$/iu.test(s);
+}
+/* 네트워크로 온 반입 모델 설정. 그대로 믿으면 편대원 전원이 남이 고른 주소
+   (거대한 파일, 외부 서버)를 받아 오고, 터무니없는 배율이 화면을 덮는다. */
+function cleanJetCfg(c){
+  if (!c || typeof c !== "object" || !safeModelPath(c.src)) return null;
+  const num = (v, a, b, d) => { v = Number(v); return Number.isFinite(v) ? clamp(v, a, b) : d; };
+  const hex = v => /^#[0-9a-f]{6}$/i.test(String(v));
+  const pick = (o, ok) => {
+    const out = {}; let n = 0;
+    if (o && typeof o === "object") for (const k of Object.keys(o)){
+      if (n >= 64) break;
+      if (k.length <= 80 && ok(o[k])){ out[k] = o[k]; n++; }
+    }
+    return out;
+  };
+  return { src:c.src, name:String(c.name || "").slice(0, 40), shared:true,
+           yaw:num(c.yaw, -360, 360, 0), pitch:num(c.pitch, -360, 360, 0), scale:num(c.scale, .1, 10, 1),
+           tint:!!c.tint, propAxis:["x","y","z"].includes(c.propAxis) ? c.propAxis : "z",
+           booster: hex(c.booster) ? c.booster : undefined,
+           parts:pick(c.parts, hex),
+           roles:pick(c.roles, v => ["", "engine", "prop", "glow"].includes(v)) };
+}
 function cleanPaint(p){
   if (!p || typeof p !== "object") return null;
   const out = {}; let n = 0;
@@ -3587,6 +3697,8 @@ const IDB = {
 /* ── 로더 ─────────────────────────────────────────────────── */
 const Models = {
   cache:new Map(),        // 소스키 -> THREE.Object3D (원본. 쓸 때 클론한다)
+  pending:new Map(),      // 받는 중인 url -> Promise. 매 프레임 같은 파일을 다시 받지 않는다
+  failed:new Set(),       // 실패한 url. 격납고에서 다시 누르기 전엔 재시도하지 않는다
 
   _parse(buf, ext){
     return new Promise((res, rej) => {
@@ -3616,11 +3728,22 @@ const Models = {
 
   async fromUrl(url){
     if (this.cache.has(url)) return this.cache.get(url);
+    if (this.pending.has(url)) return this.pending.get(url);
+    if (this.failed.has(url)) throw new Error("That file failed to load earlier.");
+    const job = this._fetchModel(url);
+    this.pending.set(url, job);
+    try { return await job; }
+    catch(e){ this.failed.add(url); throw e; }
+    finally { this.pending.delete(url); }
+  },
+  async _fetchModel(url){
     const ext = (url.split("?")[0].split(".").pop() || "").toLowerCase();
     if (!["glb","gltf","obj"].includes(ext))
       throw new Error("Only .glb, .gltf and .obj can be read.");
     const r = await fetch(url);
     if (!r.ok) throw new Error("Fetch failed (" + r.status + "). Check the path.");
+    if ((Number(r.headers.get("content-length")) || 0) > 24 * 1024 * 1024)
+      throw new Error("That file is over 24 MB.");
     const buf = await r.arrayBuffer();
     if (ext === "gltf"){
       /* .gltf 는 텍스처·bin 이 따로 있어 상대경로 해석이 필요하다 */
@@ -3889,7 +4012,10 @@ function buildJet(colorHex, key, cfg, paint){
     const c = cfg || P.custom;
     const src = c && Models.cache.get(c.src);
     if (src){
-      try { return fitModel(src, c, colorHex); }
+      /* 도장은 파트 색 위에 덮는다. 내 기체면 격납고에서 칠한 P.paint.custom */
+      const pt = paint || (c === P.custom && P.paint && P.paint.custom) || null;
+      const cc = pt ? Object.assign({}, c, { parts: Object.assign({}, c.parts, pt) }) : c;
+      try { return fitModel(src, cc, colorHex); }
       catch(e){ console.warn("custom model failed to build", e); }
     }
     return buildPlaceholder(colorHex);          // 아직 안 읽혔으면 자리표시자
@@ -4001,7 +4127,8 @@ function openHangar(){
     if (!ps || !ps.src) return;                 // 프리미티브 기체는 도장 대상이 아니다
     const list = listParts(ps.src);
     if (!list.length) return;
-    paintBox.appendChild(el("div","lbl","Paint \u00b7 " + jetDef(P.jet).nameKo));
+    paintBox.appendChild(el("div","lbl","Paint \u00b7 " +
+      (P.jet === "custom" && P.custom ? esc(P.custom.name || "Custom model") : jetDef(P.jet).nameKo)));
     const grid = el("div");
     grid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:5px 12px";
     const store = () => (P.paint[ps.key] = P.paint[ps.key] || {});
@@ -4213,6 +4340,9 @@ function openHangar(){
 
   async function loadFromUrl(u){
     if (!u) return fail("Type a file name first.");
+    if (!safeModelPath(u))
+      return fail("Type the name of a file next to index.html, like myjet.glb. Full URLs are not shared with the flight.");
+    Models.failed.delete(u);                    // 직접 누른 건 다시 시도한다
     status.textContent = "Loading…"; status.style.color = "var(--ink2)";
     try {
       await Models.fromUrl(u);
@@ -4291,6 +4421,7 @@ async function restoreCustom(){
     setTimeout(() => Net.join(h), 400);
   }
 
+  setInterval(netTick, 62);      // 약 16Hz — 출격과 무관하게 상시 (netTick 참고)
   restoreCustom();
   loadBundled();
   /* 월드 생성은 무겁다. 화면이 먼저 그려지고 나서 띄운다. */
