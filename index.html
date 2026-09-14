@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -500,19 +500,27 @@ button{cursor:pointer;background:none;border:none}
 .joinrow button:disabled{color:var(--ink3);cursor:not-allowed}
 .acts.two{}
 
+
+/* ══ 언어 전환 ═════════════════════════════════════════════ */
+.langsw{border:none;background:none;padding:4px 2px;margin-left:2px;cursor:pointer;
+  font-family:var(--f-kr);font-size:11px;color:var(--ink2);white-space:nowrap}
+.langsw:hover{color:var(--red)}
+/* 한글은 자간을 벌리면 글자가 흩어져 보인다. 영문 대문자 라벨용 넓은 자간을 한국어에서만 좁힌다 */
+html:lang(ko) :is(.lbl, .brand span, .link, .pnl > h3, .acts > button, .acts > button span, .plate span, #drawer .dwhd h2, .dogtag .cs button, .part .act, .btn, .btn.sm, .pl .who i, .pl .tag, .empty b, .msg .from, .composer button, .sheet header h3, .trade h4, .seg button, .bayc .mine, #board h3, #msg .big, #chatin span, .tbtn, .joinrow button){letter-spacing:.02em}
 </style>
 </head>
 <body>
 <!-- ══════════════ 작전실 ══════════════ -->
 <div id="ops">
   <div class="topbar">
-    <button class="burger" id="bMenu" type="button" aria-label="Menu">
+    <button class="burger" id="bMenu" type="button" aria-label="Menu" data-i18n-aria="Menu">
       <i></i><i></i><i></i></button>
     <div class="brand"><b>Rise Of Sky</b><span>Squawk</span></div>
-    <div class="stat"><span class="lbl">Credits</span><b id="tCred" class="num">0</b></div>
-    <div class="stat"><span class="lbl">Kills / Losses</span><b id="tKd" class="num">0 / 0</b></div>
+    <div class="stat"><span class="lbl" data-i18n>Credits</span><b id="tCred" class="num">0</b></div>
+    <div class="stat"><span class="lbl" data-i18n>Kills / Losses</span><b id="tKd" class="num">0 / 0</b></div>
     <span class="lbl" id="netMode">Peer-to-peer</span>
     <button class="link no" id="tLink" type="button"><i></i><span>Offline</span></button>
+    <button class="langsw" id="bLang" type="button"></button>
   </div>
 
   <div id="stage">
@@ -528,17 +536,17 @@ button{cursor:pointer;background:none;border:none}
       <section class="pnl">
         <div class="cs">
           <b id="dCall">&mdash;</b>
-          <button id="bRename" type="button">Change callsign</button>
+          <button id="bRename" type="button" data-i18n>Change callsign</button>
         </div>
       </section>
       <section class="pnl">
-        <h3>Airframe<span class="rule"></span></h3>
+        <h3 data-i18n>Airframe<span class="rule"></span></h3>
         <div id="dJet"></div>
       </section>
       <section class="pnl grow scroll">
-        <h3>Loadout<span class="rule"></span></h3>
+        <h3 data-i18n>Loadout<span class="rule"></span></h3>
         <div id="dSlots"></div>
-        <h3 style="margin-top:4px">Inventory<span class="rule"></span></h3>
+        <h3 style="margin-top:4px" data-i18n>Inventory<span class="rule"></span></h3>
         <div id="dBag"></div>
       </section>
     </aside>
@@ -550,32 +558,32 @@ button{cursor:pointer;background:none;border:none}
   <div class="scrim"></div>
   <div class="dw">
     <div class="dwhd">
-      <h2>Pilot &amp; Comms</h2><span class="rule"></span>
-      <button class="btn sm" id="bDwClose" type="button">Close</button>
+      <h2 data-i18n>Pilot &amp; Comms</h2><span class="rule"></span>
+      <button class="btn sm" id="bDwClose" type="button" data-i18n>Close</button>
     </div>
     <div class="dwin">
       <section class="pnl">
-        <h3>Record<span class="rule"></span></h3>
+        <h3 data-i18n>Record<span class="rule"></span></h3>
         <dl class="kv">
-          <dt>Sorties</dt><dd id="dSorties">0</dd>
-          <dt>Kills / Losses</dt><dd id="dKd">0 / 0</dd>
-          <dt>Accuracy</dt><dd id="dAcc">&mdash;</dd>
-          <dt>Best streak</dt><dd id="dStreak">0</dd>
+          <dt data-i18n>Sorties</dt><dd id="dSorties">0</dd>
+          <dt data-i18n>Kills / Losses</dt><dd id="dKd">0 / 0</dd>
+          <dt data-i18n>Accuracy</dt><dd id="dAcc">&mdash;</dd>
+          <dt data-i18n>Best streak</dt><dd id="dStreak">0</dd>
         </dl>
       </section>
       <section class="pnl">
-        <h3>Controls<span class="rule"></span></h3>
+        <h3 data-i18n>Controls<span class="rule"></span></h3>
         <div id="dCtrl"></div>
       </section>
       <section class="pnl flush grow">
-        <h3>Comms<span class="rule"></span>
-          <button class="btn sm" id="bTrade" type="button">Trade</button></h3>
+        <h3 data-i18n>Comms<span class="rule"></span>
+          <button class="btn sm" id="bTrade" type="button" data-i18n>Trade</button></h3>
         <div class="log scroll" id="opsLog"></div>
         <div class="brevity" id="opsBrev"></div>
         <div class="composer">
-          <input id="opsMsg" type="text" placeholder="Transmit&hellip;" maxlength="180"
+          <input id="opsMsg" type="text" placeholder="Transmit&hellip;" data-i18n-ph="Transmit…" maxlength="180"
                  autocomplete="off">
-          <button id="bSend" type="button">Send</button>
+          <button id="bSend" type="button" data-i18n>Send</button>
         </div>
       </section>
     </div>
@@ -598,17 +606,17 @@ button{cursor:pointer;background:none;border:none}
     <span><b>Tab</b> Score</span><span><b>C</b> View</span><span><b>Esc</b> Return</span>
   </div>
 
-  <div id="chatin" class="hide"><span>Radio</span>
-    <input type="text" maxlength="120" autocomplete="off" placeholder="Message…"></div>
+  <div id="chatin" class="hide"><span data-i18n>Radio</span>
+    <input type="text" maxlength="120" autocomplete="off" placeholder="Message…" data-i18n-ph="Message…"></div>
 
   <div id="board" class="hide"><div class="card">
-    <h3>Scoreboard</h3><div class="rows" id="boardRows"></div></div></div>
+    <h3 data-i18n>Scoreboard</h3><div class="rows" id="boardRows"></div></div></div>
 
   <div id="touch">
     <div id="stick"><div class="k"></div></div>
-    <button class="tbtn" id="tgun" type="button">Guns</button>
-    <button class="tbtn" id="tmsl" type="button">Msl</button>
-    <button class="tbtn" id="tab2" type="button">Boost</button>
+    <button class="tbtn" id="tgun" type="button" data-i18n>Guns</button>
+    <button class="tbtn" id="tmsl" type="button" data-i18n>Msl</button>
+    <button class="tbtn" id="tab2" type="button" data-i18n>Boost</button>
   </div>
 </div>
 
@@ -623,6 +631,334 @@ button{cursor:pointer;background:none;border:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   언어 — 기본은 영어. 키는 영어 원문 그대로, {이름} 자리에 값이 들어간다.
+   사전에 없으면 원문을 보여 준다. "원문@맥락" 키는 같은 영어가 자리마다
+   다르게 옮겨질 때 쓴다(영어로는 @ 앞만 보인다).
+   계기판(HUD) 약어와 무전 브레비티(Fox two 등)는 항공 관례대로 영어로 둔다.
+   ═════════════════════════════════════════════════════════════ */
+const LANGS = { en:"English", ko:"한국어" };
+let LANG = "en";
+try { const v = localStorage.getItem("ros.lang"); if (LANGS[v]) LANG = v; } catch(e){}
+document.documentElement.lang = LANG;
+
+const I18N = { ko: {
+ "Language set to Korean.": "한국어로 바꿨습니다.",
+ "Menu": "메뉴",
+ "Credits": "크레딧",
+ "Kills / Losses": "격추 / 손실",
+ "Change callsign": "콜사인 변경",
+ "Airframe": "기체",
+ "Loadout": "장착 부품",
+ "Inventory": "보관함",
+ "Pilot & Comms": "파일럿 · 교신",
+ "Close": "닫기",
+ "Record": "전적",
+ "Sorties": "출격 횟수",
+ "Accuracy": "명중률",
+ "Best streak": "최다 연속 격추",
+ "Controls": "조종",
+ "Comms": "교신",
+ "Trade": "거래",
+ "Transmit…": "무전 입력…",
+ "Send": "송신",
+ "Radio": "무전",
+ "Message…": "메시지…",
+ "Scoreboard": "순위",
+ "Guns": "기관포",
+ "Msl": "미사일",
+ "Boost": "부스터",
+ "Titanium Plating": "티타늄 장갑",
+ "Canard Wing": "카나드 날개",
+ "Lightweight Frame": "경량 프레임",
+ "Cooling Core": "냉각 코어",
+ "Afterburner Module": "애프터버너 모듈",
+ "Wide-Scan Radar": "광역 레이더",
+ "Lead Computing Sight": "리드 계산 조준기",
+ "ECM Jammer": "ECM 재머",
+ "High-Rate Cannon": "고속 기관포",
+ "Missile Pod": "미사일 포드",
+ "Engine": "엔진",
+ "Avionics": "항전 장비",
+ "Armament": "무장",
+ "+25 hull": "내구 +25",
+ "+20% turn rate": "선회율 +20%",
+ "+18% acceleration": "가속 +18%",
+ "+60% burner recharge": "부스터 충전 +60%",
+ "+15% max thrust": "최대 추력 +15%",
+ "+70% radar range": "레이더 범위 +70%",
+ "Shows lead pipper": "리드 조준점 표시",
+ "45% missile defeat": "미사일 45% 무력화",
+ "+35% rate of fire": "연사 속도 +35%",
+ "+3 missiles": "미사일 +3",
+ "Standard": "일반",
+ "Depot": "보급",
+ "Prototype": "시제품",
+ "Twin-engine delta": "쌍발 델타익",
+ "My airframe": "내 기체",
+ "Imported model": "가져온 모델",
+ "Hangar": "격납고",
+ "Keyboard": "키보드",
+ "Mouse": "마우스",
+ "Sens": "감도",
+ "Mouse sensitivity": "마우스 감도",
+ "Invert pitch": "피치 반전",
+ "Click the sky to capture the pointer. The stick holds where you leave it, like a real one — press <b>Z</b> to centre it. Left click fires, right click launches. Hold Shift to boost.": "하늘을 클릭하면 포인터가 잡힙니다. 실제 조종간처럼 손을 뗀 자리에 머물고, <b>Z</b>를 누르면 가운데로 돌아옵니다. 좌클릭은 기관포, 우클릭은 미사일, Shift를 누르고 있으면 부스터입니다.",
+ "W/S pitch, A/D roll, Q/E rudder. Hold Shift to boost.": "W/S 피치, A/D 롤, Q/E 러더. Shift를 누르고 있으면 부스터입니다.",
+ "Remove": "해제",
+ "Empty slot {n}": "빈 슬롯 {n}",
+ "Nothing stowed": "보관 중인 부품 없음",
+ "Kills earn credits. Trade with your flight to get parts.": "격추하면 크레딧이 쌓입니다. 부품은 편대원과 거래해서 구할 수 있습니다.",
+ "No slot": "슬롯 없음",
+ "Fit": "장착",
+ "This is what the flight calls you on the radio. Keep it under 12 characters.": "편대가 무전에서 부르는 이름입니다. 12자 이내로 정하세요.",
+ "Cancel": "취소",
+ "Confirm": "확인",
+ "Requesting a slot on the broker…": "중개 서버에 자리를 요청하는 중…",
+ "Squawk {sq} assigned. Only pilots who know it can join.": "스쿼크 {sq} 배정. 이 번호를 아는 파일럿만 들어올 수 있습니다.",
+ "Could not claim a slot. Try again in a moment.": "자리를 잡지 못했습니다. 잠시 후 다시 시도하세요.",
+ "{call} is requesting to join.": "입장 요청 — {call}",
+ "{call} joined the flight.": "편대 합류 — {call}",
+ "{call} on station": "{call} 배치 완료",
+ "{call} is no longer connected.": "연결 끊김 — {call}",
+ "{call} stopped waiting.": "대기 취소 — {call}",
+ "{call} left the flight.": "편대 이탈 — {call}",
+ "{call} off station": "{call} 이탈",
+ "The host declined your request.": "호스트가 입장을 거절했습니다.",
+ "Your request was declined.": "입장 요청이 거절되었습니다.",
+ "A squawk is four digits, each 0–7. 7500/7600/7700 are real emergency codes and are never issued.": "스쿼크는 0–7로 된 네 자리 숫자입니다. 7500·7600·7700은 실제 비상 코드라 쓰지 않습니다.",
+ "Dialling squawk {sq}…": "스쿼크 {sq} 호출 중…",
+ "Found the host, but a direct link could not be made (ICE {ice}). A strict NAT or firewall is in the way — a TURN relay is needed.": "호스트는 찾았지만 직접 연결에 실패했습니다(ICE {ice}). 엄격한 NAT나 방화벽에 막혀 있어 TURN 중계 서버가 필요합니다.",
+ "Found the host, but a direct link could not be made. A strict NAT or firewall is in the way — a TURN relay is needed.": "호스트는 찾았지만 직접 연결에 실패했습니다. 엄격한 NAT나 방화벽에 막혀 있어 TURN 중계 서버가 필요합니다.",
+ "No answer. Check the squawk, and that the host still has the page open.": "응답이 없습니다. 스쿼크가 맞는지, 호스트가 아직 페이지를 열어 두었는지 확인하세요.",
+ "Lost the host. The flight has broken up.": "호스트와 연결이 끊겨 편대가 해산되었습니다.",
+ "No flight is open on that squawk.": "그 스쿼크로 열린 편대가 없습니다.",
+ "Connection failed: {why}": "연결 실패: {why}",
+ "You are not on the invite list. Waiting for the host to approve…": "초대 명단에 없어 호스트의 승인을 기다리는 중…",
+ "Joined the flight on squawk {sq}.": "스쿼크 {sq} 편대에 합류했습니다.",
+ "Flight disbanded.": "편대를 해산했습니다.",
+ "You left the flight.": "편대에서 나왔습니다.",
+ "Host · {sq}": "호스트 · {sq}",
+ "Flight · {sq}": "편대 · {sq}",
+ "Connecting…": "연결 중…",
+ "Awaiting approval": "승인 대기",
+ "Offline": "오프라인",
+ "{n} connected": "{n}명 연결",
+ "Peer-to-peer": "P2P",
+ "Testing…": "검사 중…",
+ "Cannot reach the matchmaking broker. A firewall or proxy is blocking it.": "중개 서버에 닿지 않습니다. 방화벽이나 프록시가 막고 있습니다.",
+ "Network check failed: {why}": "네트워크 검사 실패: {why}",
+ "Broker reachable and your public address resolves. Friends on other networks should be able to connect.": "중개 서버에 닿고 공인 주소도 확인됩니다. 다른 네트워크의 친구와도 연결될 가능성이 높습니다.",
+ "Broker is reachable, but STUN returned no public address — this network hides you behind a strict NAT. Pilots on the same network may connect; pilots elsewhere probably will not.": "중개 서버에는 닿지만 STUN이 공인 주소를 돌려주지 않습니다. 엄격한 NAT 뒤에 있는 네트워크입니다. 같은 네트워크의 파일럿과는 연결될 수 있지만, 다른 곳에서는 어려울 겁니다.",
+ "Checking…": "확인 중…",
+ "Ready": "연결 가능",
+ "Same network only": "같은 네트워크만",
+ "Blocked": "차단됨",
+ "Reach — {state}": "연결성 — {state}",
+ "Trouble connecting?": "연결이 안 되나요?",
+ "Re-test": "다시 검사",
+ "Test link": "연결 검사",
+ "Mouse — the stick follows the pointer, Z centres it · L click guns · R click missile (needs lock) · Shift boost · Esc releases, then returns. Switch to keyboard in ☰ Controls.": "마우스 — 포인터가 곧 조종간, Z로 가운데 · 좌클릭 기관포 · 우클릭 미사일(록온 필요) · Shift 부스터 · Esc는 포인터 해제 후 귀환. 키보드는 ☰ 조종에서 바꿀 수 있습니다.",
+ "Touch — drag the left stick to fly · Guns · Msl (needs lock) · Boost on the right.": "터치 — 왼쪽 스틱을 끌어 조종 · 오른쪽에 기관포 · 미사일(록온 필요) · 부스터",
+ "Keyboard — W/S pitch · A/D roll · Q/E yaw · Shift boost · Space guns · F missile (needs lock) · Esc return. Switch to mouse in ☰ Controls.": "키보드 — W/S 피치 · A/D 롤 · Q/E 요 · Shift 부스터 · Space 기관포 · F 미사일(록온 필요) · Esc 귀환. 마우스는 ☰ 조종에서 바꿀 수 있습니다.",
+ "Connecting": "연결 중",
+ "You are not on the invite list. As soon as the host adds <b>{call}</b>, you will drop straight in.": "초대 명단에 없습니다. 호스트가 <b>{call}</b> 콜사인을 명단에 넣는 즉시 입장합니다.",
+ "Looking for the host on squawk <code>{sq}</code>.": "스쿼크 <code>{sq}</code>에서 호스트를 찾는 중입니다.",
+ "Briefing": "브리핑",
+ "Invite-only air combat. No server — browsers talk straight to each other.": "초대받은 사람만 들어오는 공중전. 서버 없이 브라우저끼리 바로 연결됩니다.",
+ "Solo sortie": "단독 출격",
+ "Train against drones": "드론 상대로 훈련",
+ "Open a flight": "편대 열기",
+ "Get a squawk, invite friends": "스쿼크를 받아 친구 초대",
+ "Squawk": "스쿼크",
+ "Join": "입장",
+ "A squawk is four digits, each 0–7 — a real transponder code. Only pilots who know yours can reach you.": "스쿼크는 0–7로 된 네 자리, 실제 항공기 트랜스폰더 코드입니다. 내 번호를 아는 파일럿만 찾아올 수 있습니다.",
+ "Join the fight": "교전 합류",
+ "Launch the flight": "편대 출격",
+ "Launch": "출격",
+ "Waiting for host": "호스트 대기 중",
+ "Fight is on": "교전 중",
+ "Send this to your friends. They need the link and the squawk.": "친구에게 보내세요. 링크와 스쿼크가 있어야 들어올 수 있습니다.",
+ "Host: {call}": "호스트: {call}",
+ "Copy link": "링크 복사",
+ "Copied": "복사됨",
+ "Copy failed": "복사 실패",
+ "Friends on other networks may not reach you.": "다른 네트워크의 친구는 접속하지 못할 수 있습니다.",
+ "{n} request to join": "입장 요청 {n}건",
+ "{n} requests to join": "입장 요청 {n}건",
+ "Decline": "거절",
+ "Admit": "허가",
+ "Flight · {n} aircraft": "편대 · {n}대",
+ "Down": "격추됨",
+ "Airborne": "비행 중",
+ "Standing by": "대기",
+ "Host": "호스트",
+ "You": "나",
+ "Invite list": "초대 명단",
+ "Callsigns listed here come straight in. Leave it empty and you approve every arrival by hand.": "여기 적힌 콜사인은 바로 들어옵니다. 비워 두면 들어오는 사람을 한 명씩 직접 승인합니다.",
+ "(empty)": "(비어 있음)",
+ "Callsign": "콜사인",
+ "Add": "추가",
+ "Admit anyone who knows the squawk, without approval": "스쿼크만 알면 승인 없이 누구나 입장",
+ "Disband": "해산",
+ "Leave": "나가기",
+ "That pilot is no longer in the flight.": "그 파일럿은 이미 편대에 없습니다.",
+ "An offer to <b>{call}</b>. If they accept, both records update at once.": "<b>{call}</b>에게 보내는 제안입니다. 상대가 수락하면 양쪽 기록이 동시에 바뀝니다.",
+ "You give": "내가 줄 것",
+ "Credits — {n} available": "크레딧 — {n} 보유",
+ "Credits to give": "줄 크레딧",
+ "Credits to receive": "받을 크레딧",
+ "Parts": "부품",
+ "{call} gives": "{call} 쪽에서 줄 것",
+ "Parts — checked when they accept": "부품 — 상대가 수락할 때 확인",
+ "That offer is empty.": "빈 제안입니다.",
+ "You do not have that many credits.": "크레딧이 부족합니다.",
+ "You no longer hold one of those parts.": "고른 부품 중 이미 없는 것이 있습니다.",
+ "Your offer to {call} expired. Your side was returned.": "{call}에게 보낸 제안이 만료되어 내놓은 몫을 돌려받았습니다.",
+ "Offer sent to {call}.": "{call}에게 제안을 보냈습니다.",
+ "Trade · {call}": "거래 · {call}",
+ "Send offer": "제안 보내기",
+ "{n} credits": "{n} 크레딧",
+ "nothing": "없음",
+ "not enough credits": "크레딧 부족",
+ "no {part}": "{part} 없음",
+ "part": "부품",
+ "You cannot accept — {why}.": "수락할 수 없습니다 — {why}.",
+ "That pilot has left the flight. The offer is void.": "상대가 편대를 떠나 제안이 무효가 되었습니다.",
+ "That offer has expired.": "만료된 제안입니다.",
+ "You no longer have what they asked for.": "상대가 요구한 것을 더는 갖고 있지 않습니다.",
+ "Trade complete with {call}.": "거래 완료 — {call}",
+ "your wingman": "편대원",
+ "Accept": "수락",
+ "Offer from {call}": "{call}의 제안",
+ "{call} declined the trade. Your side was returned.": "거래 거절 — {call}. 내놓은 몫을 돌려받았습니다.",
+ "They declined the trade. Your side was returned.": "상대가 거래를 거절해 내놓은 몫을 돌려받았습니다.",
+ "Trading needs someone to trade with. Open a flight or join one on a squawk first.": "거래할 상대가 없습니다. 먼저 편대를 열거나 스쿼크로 편대에 들어가세요.",
+ "Offer": "제안",
+ "Choose a trading partner": "거래 상대 선택",
+ "Solo training sortie.": "단독 훈련 출격.",
+ "Airborne. Engagement area radius 2.3 km.": "이륙. 교전 구역 반경 2.3km.",
+ "Shot down": "격추당함",
+ "Hit by {call}.": "원인 — {call}.",
+ "Respawn in 5 s.": "5초 뒤 재출격.",
+ "Terrain": "지형",
+ "Out of area": "구역 이탈",
+ "Drone": "드론",
+ "Missile": "미사일",
+ "Bandit": "적기",
+ "bandit": "적기",
+ "Splash": "격추",
+ "salvaged {part}": "{part} 회수",
+ "Airborne@respawn": "재출격",
+ "Winchester": "탄 소진",
+ "No missiles remaining": "미사일이 남아 있지 않습니다",
+ "Missile@warn": "미사일 경보",
+ "Launched by {call}": "발사 — {call}",
+ "Paused — this tab is in the background. Your aircraft is not flying.": "일시 정지 — 이 탭이 백그라운드에 있어 기체가 멈춰 있습니다.",
+ "{call} wants in": "입장 요청 — {call}",
+ "Y admit · N decline": "Y 허가 · N 거절",
+ "Stick": "조종간",
+ "L / R click": "좌/우 클릭",
+ "Guns / Missile": "기관포 / 미사일",
+ "Centre stick": "조종간 가운데로",
+ "Score": "순위",
+ "View": "시점",
+ "Release, then return": "포인터 해제, 한 번 더 누르면 귀환",
+ "Pitch": "피치",
+ "Roll": "롤",
+ "Yaw": "요",
+ "Missile (needs lock)": "미사일 (록온 필요)",
+ "Return": "귀환",
+ "Colour {hex}": "색 {hex}",
+ "Your flight sees whatever airframe you pick here. Import your own model below.": "여기서 고른 기체가 편대원 화면에도 그대로 보입니다. 직접 만든 모델은 아래에서 가져오세요.",
+ "Bundled · seen by the flight": "사이트 동봉 · 편대원도 보임",
+ "This browser only": "이 브라우저에서만",
+ "Imported": "가져옴",
+ "Paint · {name}": "도장 · {name}",
+ "Custom model": "직접 만든 모델",
+ "Booster": "부스터",
+ "Reset colours": "색 초기화",
+ "Import your own model": "모델 가져오기",
+ "Drop a .glb, .gltf or .obj file here": ".glb, .gltf, .obj 파일을 여기에 놓으세요",
+ "Dropped files stay in <b>this browser only</b>. To let your flight see it too, use the path field below.": "끌어다 놓은 파일은 <b>이 브라우저에서만</b> 보입니다. 편대원에게도 보이게 하려면 아래 경로 칸을 쓰세요.",
+ "Choose file": "파일 선택",
+ "Path to a file bundled with the site": "사이트에 동봉한 파일 경로",
+ "Load": "불러오기",
+ "Put the model file next to index.html and type its name. Anyone who opens your link downloads the same file, so the whole flight sees the same airframe.": "모델 파일을 index.html 옆에 두고 파일 이름을 적으세요. 링크로 들어온 사람은 모두 같은 파일을 받으니, 편대 전원이 같은 기체를 보게 됩니다.",
+ "Orientation": "자세 보정",
+ "Every exporter points the nose down a different axis. Rotate until the nose points <b>up and to the right, away from you</b> — the burner cone marks the tail.": "내보낸 프로그램마다 기수가 향하는 축이 다릅니다. 기수가 <b>오른쪽 위, 화면 안쪽</b>을 향할 때까지 돌리세요. 후연이 붙은 쪽이 꼬리입니다.",
+ "Scale": "크기",
+ "Paint the whole airframe in my pilot colour": "기체 전체를 내 파일럿 색으로 칠하기",
+ "This model has no separate parts, so it can only be painted as one piece. Name the meshes in your 3D tool — or, in Tinkercad, give each part its own colour: every colour becomes a part here.": "파트가 나뉘어 있지 않아 한 덩어리로만 칠할 수 있습니다. 3D 툴에서 메시마다 이름을 붙이거나, 팅커캐드라면 파트마다 색을 다르게 칠하세요. 색 하나가 여기서 파트 하나가 됩니다.",
+ "Parts · {n}": "파트 · {n}",
+ "engine": "엔진",
+ "prop": "프로펠러",
+ "glow": "발광",
+ "Showing the first 40 parts.": "처음 40개 파트만 보여 줍니다.",
+ "Engine parts found — the burner sits on each of them.": "엔진 파트를 찾았습니다. 파트마다 후연이 붙습니다.",
+ "No part is named engine/nozzle/exhaust, so the burner sits at the tail.": "engine·nozzle·exhaust라는 이름의 파트가 없어 후연은 꼬리에 붙습니다.",
+ "Propeller parts found — they spin with the throttle.": "프로펠러 파트를 찾았습니다. 스로틀에 맞춰 돌아갑니다.",
+ "Prop axis": "회전축",
+ "Pick the axis the propeller spins around in your file.": "파일에서 프로펠러가 도는 축을 고르세요.",
+ "Apply": "적용",
+ "Airframe changed to {name}.": "기체 변경 — {name}",
+ "your model": "내 모델",
+ "{name} loaded. Set the nose direction, then apply.": "불러옴 — {name}. 기수 방향을 맞춘 뒤 적용하세요.",
+ "Type a file name first.": "먼저 파일 이름을 적으세요.",
+ "Type the name of a file next to index.html, like myjet.glb. Full URLs are not shared with the flight.": "index.html 옆에 있는 파일 이름을 적으세요(예: myjet.glb). 전체 URL은 편대원에게 공유되지 않습니다.",
+ "Loading…": "불러오는 중…",
+ "Reading…": "읽는 중…",
+ "Only .glb, .gltf and .obj can be read.": ".glb, .gltf, .obj 파일만 읽을 수 있습니다.",
+ "That file is over 24 MB.": "24MB가 넘는 파일입니다.",
+ "The OBJ loader did not load.": "OBJ 로더를 불러오지 못했습니다.",
+ "The GLTF loader did not load.": "GLTF 로더를 불러오지 못했습니다.",
+ "That file contains no model.": "모델이 들어 있지 않은 파일입니다.",
+ "No meshes in that file. Check that geometry was exported.": "메시가 없는 파일입니다. 형상이 제대로 내보내졌는지 확인하세요.",
+ "That file failed to load earlier.": "앞서 불러오기에 실패한 파일입니다.",
+ "Fetch failed ({code}). Check the path.": "파일을 받지 못했습니다({code}). 경로를 확인하세요.",
+ "Operations room open. Callsign {call}.": "작전실 개방. 콜사인 {call}.",
+ "Open a flight to get a four-digit squawk. Only pilots who know it can join.": "편대를 열면 네 자리 스쿼크를 받습니다. 번호를 아는 파일럿만 들어올 수 있습니다.",
+ "Squawk {sq} came in on the link. Connecting.": "링크로 받은 스쿼크 {sq}에 연결합니다.",
+ "Warning: the 3D engine did not load. Check your connection.": "경고: 3D 엔진을 불러오지 못했습니다. 인터넷 연결을 확인하세요.",
+ "Warning: the peer-to-peer module did not load. Solo training only.": "경고: P2P 모듈을 불러오지 못했습니다. 단독 훈련만 할 수 있습니다."
+} };
+
+function tx(s, vars){
+  const dict = LANG !== "en" && I18N[LANG];
+  let o = (dict && dict[s]) || s.replace(/@\w+$/, "");
+  if (vars) o = o.replace(/\{(\w+)\}/g, (m, k) => vars[k] != null ? String(vars[k]) : m);
+  return o;
+}
+
+/* 부품·등급·기체 설명 — 원문을 한 번 챙겨 두고 언어가 바뀔 때마다 다시 옮긴다 */
+function localizeData(){
+  for (const k in PARTS){
+    const p = PARTS[k]; if (!p._en) p._en = { n:p.n, c:p.c, e:p.e };
+    p.n = tx(p._en.n); p.c = tx(p._en.c); p.e = tx(p._en.e);
+  }
+  if (!TIER._en) Object.defineProperty(TIER, "_en", { value:Object.assign({}, TIER) });
+  for (const k in TIER._en) TIER[k] = tx(TIER._en[k]);
+  for (const k in JETS){
+    const j = JETS[k]; if (!j._en) j._en = { note:j.note };
+    j.note = tx(j._en.note);
+  }
+}
+
+/* HTML 에 박힌 글자 — data-i18n 붙은 요소의 글자 노드만 바꾼다(안의 태그는 그대로) */
+function applyStaticText(){
+  document.querySelectorAll("[data-i18n]").forEach(e => {
+    const nodes = [...e.childNodes].filter(n => n.nodeType === 3 && n.nodeValue.trim());
+    const n = nodes[0]; if (!n) return;
+    if (!e.dataset.i18n) e.dataset.i18n = n.nodeValue.trim();
+    const lead = n.nodeValue.match(/^\s*/)[0], trail = n.nodeValue.match(/\s*$/)[0];
+    n.nodeValue = lead + tx(e.dataset.i18n) + trail;
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(e => { e.placeholder = tx(e.dataset.i18nPh); });
+  document.querySelectorAll("[data-i18n-aria]").forEach(e => { e.setAttribute("aria-label", tx(e.dataset.i18nAria)); });
+}
+</script>
 <script>
 "use strict";
 /* ═══════════════════════════════════════════════════════════════
@@ -749,7 +1085,7 @@ function renderPilot(){
   const pl = $("#dPlate");
   if (pl){
     const pj = P.jet === "custom"
-      ? { nameKo:(P.custom && P.custom.name) || "My airframe", note:"Imported model" }
+      ? { nameKo:(P.custom && P.custom.name) || tx("My airframe"), note:tx("Imported model") }
       : jetDef(P.jet);
     pl.innerHTML = "";
     pl.appendChild(el("b", null, esc(pj.nameKo)));
@@ -763,10 +1099,10 @@ function renderPilot(){
     const row = el("div","slot t2");
     row.appendChild(el("div","t"));
     const jd = P.jet === "custom"
-      ? { nameKo:(P.custom && P.custom.name) || "My airframe", note:"Imported model" }
+      ? { nameKo:(P.custom && P.custom.name) || tx("My airframe"), note:tx("Imported model") }
       : jetDef(P.jet);
     row.appendChild(el("div","nm","<b>" + esc(jd.nameKo) + "</b><i>" + esc(jd.note || "") + "</i>"));
-    const gb = mkBtn("Hangar","sm", openHangar);
+    const gb = mkBtn(tx("Hangar"),"sm", openHangar);
     row.appendChild(gb);
     jw.appendChild(row);
   }
@@ -777,7 +1113,7 @@ function renderPilot(){
     cw.style.cssText = "display:flex;flex-direction:column;gap:9px";
     const seg = el("div","seg");
     [["key","Keyboard"],["mouse","Mouse"]].forEach(([k,label]) => {
-      const b = el("button", P.ctrl === k ? "on" : "", label); b.type = "button";
+      const b = el("button", P.ctrl === k ? "on" : "", tx(label)); b.type = "button";
       b.addEventListener("click", () => {
         P.ctrl = k; save(); renderPilot(); paintTips(); renderFlight();
         if (k !== "mouse" && document.pointerLockElement) document.exitPointerLock();
@@ -787,9 +1123,9 @@ function renderPilot(){
     cw.appendChild(seg);
     if (P.ctrl === "mouse"){
       const r = el("div","rng");
-      r.appendChild(el("span","lbl","Sens"));
+      r.appendChild(el("span","lbl", tx("Sens")));
       const sr = el("input"); sr.type = "range"; sr.min = ".3"; sr.max = "3"; sr.step = ".1";
-      sr.value = String(P.sens); sr.setAttribute("aria-label","Mouse sensitivity");
+      sr.value = String(P.sens); sr.setAttribute("aria-label", tx("Mouse sensitivity"));
       const vv = el("span","v", P.sens.toFixed(1));
       sr.addEventListener("input", () => {
         P.sens = parseFloat(sr.value); vv.textContent = P.sens.toFixed(1); save();
@@ -799,14 +1135,12 @@ function renderPilot(){
       const inv = el("label","chk");
       const ic = el("input"); ic.type = "checkbox"; ic.checked = P.invertY;
       ic.addEventListener("change", () => { P.invertY = ic.checked; save(); });
-      inv.appendChild(ic); inv.appendChild(el("span", null, "Invert pitch"));
+      inv.appendChild(ic); inv.appendChild(el("span", null, tx("Invert pitch")));
       cw.appendChild(inv);
-      cw.appendChild(el("div","note",
-        "Click the sky to capture the pointer. The stick holds where you leave it, " +
-        "like a real one — press <b>Z</b> to centre it. Left click fires, right click launches. Hold Shift to boost."));
+      cw.appendChild(el("div","note", tx("Click the sky to capture the pointer. The stick holds where you leave it, like a real one — press <b>Z</b> to centre it. Left click fires, right click launches. Hold Shift to boost.")));
     } else {
       cw.appendChild(el("div","note",
-        "W/S pitch, A/D roll, Q/E rudder. Hold Shift to boost."));
+        tx("W/S pitch, A/D roll, Q/E rudder. Hold Shift to boost.")));
     }
   }
 
@@ -817,14 +1151,13 @@ function renderPilot(){
     row.appendChild(el("div","t"));
     if (p){
       row.appendChild(el("div","nm","<b>"+esc(p.n)+"</b><i>"+esc(p.e)+"</i>"));
-      const x = el("button","x","✕"); x.type="button"; x.title="Remove";
+      const x = el("button","x","✕"); x.type="button"; x.title=tx("Remove");
       x.addEventListener("click", () => {
         P.bag[id] = (P.bag[id]||0) + 1; P.eq[i] = null; save(); renderPilot();
       });
       row.appendChild(x);
     } else {
-      row.appendChild(el("div","nm","<b style='color:var(--ink3);font-weight:400'>Empty slot "
-        + (i+1) + "</b>"));
+      row.appendChild(el("div","nm","<b style='color:var(--ink3);font-weight:400'>" + tx("Empty slot {n}", {n:i+1}) + "</b>"));
     }
     sl.appendChild(row);
   }
@@ -832,7 +1165,7 @@ function renderPilot(){
   const bag = $("#dBag"); bag.innerHTML = "";
   const owned = Object.keys(P.bag).filter(k => P.bag[k] > 0 && PARTS[k]);
   if (!owned.length){
-    bag.appendChild(el("div","empty","<b>Nothing stowed</b>Kills earn credits. Trade with your flight to get parts."));
+    bag.appendChild(el("div","empty","<b>" + tx("Nothing stowed") + "</b>" + tx("Kills earn credits. Trade with your flight to get parts.")));
   } else {
     owned.sort((a,b) => PARTS[b].t - PARTS[a].t || PARTS[a].n.localeCompare(PARTS[b].n));
     for (const id of owned){
@@ -842,7 +1175,7 @@ function renderPilot(){
       row.appendChild(el("div","nm","<b>"+esc(p.n)+"</b><i>"+TIER[p.t]+" · "+esc(p.e)+"</i>"));
       row.appendChild(el("div","qty","×"+P.bag[id]));
       const free = P.eq.indexOf(null);
-      const b = el("button","act", free < 0 ? "No slot" : "Fit"); b.type="button";
+      const b = el("button","act", free < 0 ? tx("No slot") : tx("Fit")); b.type="button";
       if (free < 0) b.disabled = true;
       else b.addEventListener("click", () => {
         const i = P.eq.indexOf(null); if (i < 0) return;
@@ -858,8 +1191,7 @@ function renderPilot(){
 /* 콜사인 변경 */
 $("#bRename").addEventListener("click", () => {
   const wrap = el("div","field");
-  wrap.appendChild(el("div","note",
-    "This is what the flight calls you on the radio. Keep it under 12 characters."));
+  wrap.appendChild(el("div","note", tx("This is what the flight calls you on the radio. Keep it under 12 characters.")));
   const inp = el("input","inp"); inp.value = P.call; inp.maxLength = 14;
   wrap.appendChild(inp);
   const commit = () => {
@@ -868,7 +1200,7 @@ $("#bRename").addEventListener("click", () => {
     closeModal();
   };
   inp.addEventListener("keydown", e => { if (e.key === "Enter") commit(); });
-  openModal("Change callsign", wrap, [mkBtn("Cancel","",closeModal), mkBtn("Confirm","pri",commit)]);
+  openModal(tx("Change callsign"), wrap, [mkBtn(tx("Cancel"),"",closeModal), mkBtn(tx("Confirm"),"pri",commit)]);
   setTimeout(() => { inp.focus(); inp.select(); }, 30);
 });
 </script>
@@ -916,7 +1248,7 @@ const Net = {
   async host(){
     this.teardown();
     this.mode = "host"; this.status = "dialing";
-    sysLog("Requesting a slot on the broker…"); paintLink(); renderFlight();
+    sysLog(tx("Requesting a slot on the broker…")); paintLink(); renderFlight();
     for (let attempt = 0; attempt < 6; attempt++){
       const sq = newSquawk();
       const ok = await this._claim(sq);
@@ -924,14 +1256,14 @@ const Net = {
         this.squawk = sq; this.hostPid = NETID; this.status = "up";
         this.roster.set(NETID, Object.assign(this.me(), {host:true}));
         this.invited = []; this.openToAll = false; this.requests = [];
-        sysLog("Squawk " + sq + " assigned. Only pilots who know it can join.");
+        sysLog(tx("Squawk {sq} assigned. Only pilots who know it can join.", {sq}));
         paintLink(); renderFlight();
         try{ NetCheck.afterHost(); }catch(e){}   // 진단은 host() 를 절대 막지 않는다
         return true;
       }
     }
     this.status = "down"; this.mode = "off";
-    sysLog("Could not claim a slot. Try again in a moment.");
+    sysLog(tx("Could not claim a slot. Try again in a moment."));
     paintLink(); renderFlight(); return false;
   },
 
@@ -983,7 +1315,7 @@ const Net = {
         if (ex){ ex.conn = c; ex.jet = m.jet; ex.jetCfg = m.jetCfg; ex.color = m.color; ex.paint = m.paint; }
         else this.requests.push({pid, call, conn:c, color:m.color, jet:m.jet, jetCfg:m.jetCfg, paint:m.paint});
         try{ c.send({t:"wait"}); }catch(e){}
-        sysLog(call + " is requesting to join."); renderFlight(); paintAsk(); return;
+        sysLog(tx("{call} is requesting to join.", {call})); renderFlight(); paintAsk(); return;
       }
       this._admit(c, pid, call, m.color, m.jet, m.jetCfg, m.paint); return;
     }
@@ -1000,8 +1332,8 @@ const Net = {
     try{ c.send({t:"welcome", sq:this.squawk, hostPid:NETID, live:this.live,
                  roster:this.rosterList()}); }catch(e){}
     this._bcast({t:"roster", roster:this.rosterList()});
-    sysLog(call + " joined the flight.");
-    Chat.push("ops", "", call + " on station", true);
+    sysLog(tx("{call} joined the flight.", {call}));
+    Chat.push("ops", "", tx("{call} on station", {call}), true);
     renderFlight();
   },
 
@@ -1010,7 +1342,7 @@ const Net = {
     const r = this.requests.splice(i,1)[0];
     if (!this.invited.includes(r.call)) this.invited.push(r.call);
     if (r.conn && r.conn.open) this._admit(r.conn, r.pid, r.call, r.color, r.jet, r.jetCfg, r.paint);
-    else sysLog(r.call + " is no longer connected.");
+    else sysLog(tx("{call} is no longer connected.", {call:r.call}));
     renderFlight(); paintAsk();
   },
   deny(pid){
@@ -1027,12 +1359,12 @@ const Net = {
     const ri = this.requests.findIndex(r => r.conn === c);
     if (ri >= 0){
       const q = this.requests.splice(ri, 1)[0];
-      sysLog(q.call + " stopped waiting."); renderFlight(); paintAsk();
+      sysLog(tx("{call} stopped waiting.", {call:q.call})); renderFlight(); paintAsk();
     }
     const pid = this._pidOf(c); if (!pid) return;
     const r = this.roster.get(pid);
     this.conns.delete(pid); this.roster.delete(pid); this.states.delete(pid);
-    if (r){ sysLog(r.call + " left the flight."); Chat.push("ops","", r.call + " off station", true); }
+    if (r){ sysLog(tx("{call} left the flight.", {call:r.call})); Chat.push("ops","", tx("{call} off station", {call:r.call}), true); }
     this._bcast({t:"roster", roster:this.rosterList()});
     renderFlight();
   },
@@ -1047,13 +1379,13 @@ const Net = {
   /* ── 참가 ── */
   join(sq){
     if (!validSquawk(sq)){
-      sysLog("A squawk is four digits, each 0–7. 7500/7600/7700 are real emergency codes and are never issued.");
+      sysLog(tx("A squawk is four digits, each 0–7. 7500/7600/7700 are real emergency codes and are never issued."));
       return;
     }
     this.teardown();
     this.lastError = "";
     this.mode = "guest"; this.status = "dialing"; this.squawk = sq;
-    sysLog("Dialling squawk " + sq + "…"); paintLink(); renderFlight();
+    sysLog(tx("Dialling squawk {sq}…", {sq})); paintLink(); renderFlight();
 
     const p = new Peer({ debug:0, config:ICE });
     this.peer = p;
@@ -1062,9 +1394,8 @@ const Net = {
     let ice = "";   // 브로커는 호스트를 찾았는데 P2P 직결이 안 되는 경우를 가려낸다
     const t = setTimeout(() => {
       if (this.status === "dialing")
-        fail(ice ? "Found the host, but a direct link could not be made (ICE " + ice + "). " +
-                   "A strict NAT or firewall is in the way — a TURN relay is needed."
-                 : "No answer. Check the squawk, and that the host still has the page open.");
+        fail(ice ? tx("Found the host, but a direct link could not be made (ICE {ice}). A strict NAT or firewall is in the way — a TURN relay is needed.", {ice})
+                 : tx("No answer. Check the squawk, and that the host still has the page open."));
     }, 25000);
 
     p.on("open", () => {
@@ -1076,12 +1407,11 @@ const Net = {
       c.on("close", () => {
         clearTimeout(t);
         if (this.mode === "guest" && this.status === "dialing"){
-          fail("Found the host, but a direct link could not be made. " +
-               "A strict NAT or firewall is in the way — a TURN relay is needed.");
+          fail(tx("Found the host, but a direct link could not be made. A strict NAT or firewall is in the way — a TURN relay is needed."));
           return;
         }
         if (this.mode === "guest"){
-          sysLog("Lost the host. The flight has broken up.");
+          sysLog(tx("Lost the host. The flight has broken up."));
           if (Game.running) endSortie();
           this.teardown(); paintLink(); renderFlight();
         }
@@ -1090,8 +1420,8 @@ const Net = {
     });
     p.on("error", err => {
       clearTimeout(t);
-      if (err && err.type === "peer-unavailable") fail("No flight is open on that squawk.");
-      else if (this.status !== "up") fail("Connection failed: " + ((err && err.type) || "unknown"));
+      if (err && err.type === "peer-unavailable") fail(tx("No flight is open on that squawk."));
+      else if (this.status !== "up") fail(tx("Connection failed: {why}", {why:(err && err.type) || "unknown"}));
     });
     p.on("disconnected", () => { try{ p.reconnect(); }catch(e){} });
   },
@@ -1100,11 +1430,11 @@ const Net = {
     if (!m || typeof m !== "object") return;
     if (m.t === "wait"){
       clearTimeout(t); this.status = "wait";
-      sysLog("You are not on the invite list. Waiting for the host to approve…");
+      sysLog(tx("You are not on the invite list. Waiting for the host to approve…"));
       paintLink(); renderFlight(); return;
     }
     if (m.t === "deny"){
-      clearTimeout(t); sysLog(m.why || "Your request was declined.");
+      clearTimeout(t); sysLog(m.why ? tx(m.why) : tx("Your request was declined."));
       this.teardown(); paintLink(); renderFlight(); return;
     }
     if (m.t === "welcome"){
@@ -1113,7 +1443,7 @@ const Net = {
       (m.roster||[]).forEach(r => this.roster.set(r.pid, r));
       this.roster.set(NETID, Object.assign(this.me(), {host:false}));
       this.live = !!m.live;   // 출격은 항상 버튼으로 — 자동 startSortie 없음
-      sysLog("Joined the flight on squawk " + this.squawk + ".");
+      sysLog(tx("Joined the flight on squawk {sq}.", {sq:this.squawk}));
       paintLink(); renderFlight(); return;
     }
     if (m.t === "roster"){
@@ -1208,7 +1538,7 @@ const Net = {
   leaveFlight(){
     const wasHost = this.isHost;
     this.teardown();
-    sysLog(wasHost ? "Flight disbanded." : "You left the flight.");
+    sysLog(wasHost ? tx("Flight disbanded.") : tx("You left the flight."));
     paintLink(); renderFlight();
   },
 
@@ -1226,12 +1556,11 @@ const Net = {
 function paintLink(){
   const b = $("#tLink"), s = b.querySelector("span");
   b.className = "link " + (Net.up ? "on" : "no");
-  s.textContent = Net.up && Net.mode === "host"  ? "Host · " + Net.squawk
-                : Net.up && Net.mode === "guest" ? "Flight · " + Net.squawk
-                : Net.status === "dialing" ? "Connecting…"
-                : Net.status === "wait"    ? "Awaiting approval"
-                : "Offline";
-  $("#netMode").textContent = Net.up ? Net.roster.size + " connected" : "Peer-to-peer";
+  s.textContent = Net.up && Net.mode === "host"  ? tx("Host · {sq}", {sq:Net.squawk})
+                : Net.up && Net.mode === "guest" ? tx("Flight · {sq}", {sq:Net.squawk})
+                : Net.status === "dialing" ? tx("Connecting…")
+                : Net.status === "wait"    ? tx("Awaiting approval") : tx("Offline");
+  $("#netMode").textContent = Net.up ? tx("{n} connected", {n:Net.roster.size}) : tx("Peer-to-peer");
 }
 $("#tLink").addEventListener("click", () => { if (Net.up || Net.status === "wait") Net.leaveFlight(); });
 </script>
@@ -1344,7 +1673,7 @@ const NetCheck = {
   async run(){
     if (this.state === "running") return;
     const prev = this.state;                 // ready 문장은 ready 로 '바뀔 때'만 찍는다
-    this.state = "running"; this.detail = "Testing…";
+    this.state = "running"; this.detail = tx("Testing…");
     this.broker = this.srflx = this.relay = null;
     renderFlight();
     try {
@@ -1352,11 +1681,11 @@ const NetCheck = {
       this.broker = b;
       if (!b){
         this.state = "blocked";
-        this.detail = "Cannot reach the matchmaking broker. A firewall or proxy is blocking it.";
+        this.detail = tx("Cannot reach the matchmaking broker. A firewall or proxy is blocking it.");
       } else this._fromIce(ice, prev);
     } catch(e){
       this.state = "blocked";
-      this.detail = "Network check failed: " + (e && e.message ? e.message : "unknown");
+      this.detail = tx("Network check failed: {why}", {why: e && e.message ? e.message : "unknown"});
     }
     renderFlight();
   },
@@ -1366,14 +1695,11 @@ const NetCheck = {
     this.srflx = ice.srflx; this.relay = ice.relay;
     if (ice.srflx || ice.relay){
       this.state = "ready";
-      this.detail = "Broker reachable and your public address resolves. " +
-                    "Friends on other networks should be able to connect.";
+      this.detail = tx("Broker reachable and your public address resolves. Friends on other networks should be able to connect.");
       if (prev !== "ready") sysLog(this.detail);   // 재검사 때마다 같은 문장을 찍지 않는다
     } else {
       this.state = "local";
-      this.detail = "Broker is reachable, but STUN returned no public address — " +
-                    "this network hides you behind a strict NAT. Pilots on the same " +
-                    "network may connect; pilots elsewhere probably will not.";
+      this.detail = tx("Broker is reachable, but STUN returned no public address — this network hides you behind a strict NAT. Pilots on the same network may connect; pilots elsewhere probably will not.");
     }
   },
 
@@ -1382,13 +1708,13 @@ const NetCheck = {
   async afterHost(){
     if (this.state === "running") return;
     const prev = this.state;
-    this.state = "running"; this.detail = "Testing…";
+    this.state = "running"; this.detail = tx("Testing…");
     this.broker = true; this.srflx = this.relay = null;
     renderFlight();
     try { this._fromIce(await this.gatherIce(), prev); }
     catch(e){
       this.state = "blocked";
-      this.detail = "Network check failed: " + (e && e.message ? e.message : "unknown");
+      this.detail = tx("Network check failed: {why}", {why: e && e.message ? e.message : "unknown"});
     }
     renderFlight();
   },
@@ -1447,19 +1773,19 @@ function sectionHead(title, hint){
 
 function netCheckStrip(){
   const map = {
-    running: { c:"var(--ink2)", t:"Checking…" },
-    ready:   { c:"var(--ink)",  t:"Ready" },
-    local:   { c:"var(--red)",  t:"Same network only" },
-    blocked: { c:"var(--red)",  t:"Blocked" }
+    running: { c:"var(--ink2)", t:tx("Checking…") },
+    ready:   { c:"var(--ink)",  t:tx("Ready") },
+    local:   { c:"var(--red)",  t:tx("Same network only") },
+    blocked: { c:"var(--red)",  t:tx("Blocked") }
   };
   const m = map[NetCheck.state];
   const w = el("div","strip");
   if (m){   // idle 은 점 없이 조용한 한 줄
     const dot = el("i"); dot.style.background = m.c; w.appendChild(dot);
-    w.appendChild(el("span", null, "Reach &mdash; " + esc(m.t)));
-  } else w.appendChild(el("span","lbl","Trouble connecting?"));
+    w.appendChild(el("span", null, tx("Reach — {state}", {state:esc(m.t)})));
+  } else w.appendChild(el("span","lbl", tx("Trouble connecting?")));
   w.appendChild(el("span","rule"));
-  const btn = mkBtn(m ? "Re-test" : "Test link", "sm", () => NetCheck.run());
+  const btn = mkBtn(m ? tx("Re-test") : tx("Test link"), "sm", () => NetCheck.run());
   if (NetCheck.state === "running") btn.disabled = true;
   w.appendChild(btn);
   return w;
@@ -1469,13 +1795,10 @@ function netCheckStrip(){
 function controlNote(){
   const touch = "ontouchstart" in window && P.ctrl !== "mouse";   // 휴대폰엔 화면 조종간이 뜬다
   return el("div","note", P.ctrl === "mouse"
-    ? "Mouse — the stick follows the pointer, Z centres it · L click guns · " +
-      "R click missile (needs lock) · Shift boost · Esc releases, then returns. " +
-      "Switch to keyboard in ☰ Controls."
+    ? tx("Mouse — the stick follows the pointer, Z centres it · L click guns · R click missile (needs lock) · Shift boost · Esc releases, then returns. Switch to keyboard in ☰ Controls.")
     : touch
-    ? "Touch — drag the left stick to fly · Guns · Msl (needs lock) · Boost on the right."
-    : "Keyboard — W/S pitch · A/D roll · Q/E yaw · Shift boost · Space guns · " +
-      "F missile (needs lock) · Esc return. Switch to mouse in ☰ Controls.");
+    ? tx("Touch — drag the left stick to fly · Guns · Msl (needs lock) · Boost on the right.")
+    : tx("Keyboard — W/S pitch · A/D roll · Q/E yaw · Shift boost · Space guns · F missile (needs lock) · Esc return. Switch to mouse in ☰ Controls."));
 }
 
 function renderFlight(){
@@ -1485,21 +1808,19 @@ function renderFlight(){
   /* 접속 중 / 승인 대기 */
   if (Net.status === "dialing" || Net.status === "wait"){
     const c = el("div","brief");
-    c.appendChild(el("div","lbl", Net.status === "wait" ? "Awaiting approval" : "Connecting"));
+    c.appendChild(el("div","lbl", Net.status === "wait" ? tx("Awaiting approval") : tx("Connecting")));
     c.appendChild(el("div","note", Net.status === "wait"
-      ? "You are not on the invite list. As soon as the host adds <b>" + esc(P.call) +
-        "</b>, you will drop straight in."
-      : "Looking for the host on squawk <code>" + esc(Net.squawk || "") + "</code>."));
-    c.appendChild(mkBtn("Cancel","", () => Net.leaveFlight()));
+      ? tx("You are not on the invite list. As soon as the host adds <b>{call}</b>, you will drop straight in.", {call:esc(P.call)})
+      : tx("Looking for the host on squawk <code>{sq}</code>.", {sq:esc(Net.squawk || "")})));
+    c.appendChild(mkBtn(tx("Cancel"),"", () => Net.leaveFlight()));
     pane.appendChild(c);
     return;
   }
 
   /* ── 편대에 들어가 있지 않을 때 ── */
   if (!Net.up){
-    pane.appendChild(el("div","lbl","Briefing"));
-    pane.appendChild(el("div","note",
-      "Invite-only air combat. No server — browsers talk straight to each other."));
+    pane.appendChild(el("div","lbl", tx("Briefing")));
+    pane.appendChild(el("div","note", tx("Invite-only air combat. No server — browsers talk straight to each other.")));
 
     const acts = el("div","acts two");
     const mk = (title, sub, fn) => {
@@ -1509,15 +1830,15 @@ function renderFlight(){
       b.addEventListener("click", fn);
       return b;
     };
-    acts.appendChild(mk("Solo sortie", "Train against drones", () => startSortie(true)));
-    acts.appendChild(mk("Open a flight", "Get a squawk, invite friends", () => Net.host()));
+    acts.appendChild(mk(tx("Solo sortie"), tx("Train against drones"), () => startSortie(true)));
+    acts.appendChild(mk(tx("Open a flight"), tx("Get a squawk, invite friends"), () => Net.host()));
     pane.appendChild(acts);
 
     const jr = el("div","joinrow");
     const inp = el("input"); inp.type = "text"; inp.maxLength = 4;
     inp.inputMode = "numeric"; inp.placeholder = "0000";
-    inp.setAttribute("aria-label", "Squawk");
-    const go = el("button"); go.type = "button"; go.textContent = "Join"; go.disabled = true;
+    inp.setAttribute("aria-label", tx("Squawk"));
+    const go = el("button"); go.type = "button"; go.textContent = tx("Join"); go.disabled = true;
     inp.addEventListener("input", () => {
       inp.value = inp.value.replace(/[^0-7]/g, "").slice(0, 4);
       go.disabled = inp.value.length !== 4;
@@ -1529,9 +1850,7 @@ function renderFlight(){
     jr.appendChild(inp); jr.appendChild(go);
     pane.appendChild(jr);
 
-    pane.appendChild(el("div","note",
-      "A squawk is four digits, each 0–7 — a real transponder code. " +
-      "Only pilots who know yours can reach you."));
+    pane.appendChild(el("div","note", tx("A squawk is four digits, each 0–7 — a real transponder code. Only pilots who know yours can reach you.")));
     pane.appendChild(controlNote());
     if (NetCheck.state === "local" || NetCheck.state === "blocked")
       pane.appendChild(el("div","warn", esc(NetCheck.detail)));
@@ -1544,16 +1863,16 @@ function renderFlight(){
   /* ── 편대 안 ── */
   /* 출격 버튼 — 전투 중이면 맨 위, 아니면 맨 아래. 한 곳에서만 만든다 */
   const launchBtn = () => Net.isHost
-    ? mkBtn(Net.live ? "Join the fight" : "Launch the flight", "pri", () => {
+    ? mkBtn(Net.live ? tx("Join the fight") : tx("Launch the flight"), "pri", () => {
         Net.setLive(true); startSortie(false);
       })
-    : mkBtn(Net.live ? "Launch" : "Waiting for host", Net.live ? "pri" : "", () => {
+    : mkBtn(Net.live ? tx("Launch") : tx("Waiting for host"), Net.live ? "pri" : "", () => {
         if (Net.live) startSortie(false);
       });
   const hot = Net.live && !Game.running;
   if (hot){
     const lb = el("div","brief"); lb.style.alignItems = "flex-start";   // 버튼은 제 폭으로
-    lb.appendChild(el("div","lbl","Fight is on"));
+    lb.appendChild(el("div","lbl", tx("Fight is on")));
     lb.appendChild(launchBtn());
     lb.appendChild(controlNote());
     pane.appendChild(lb);
@@ -1562,37 +1881,36 @@ function renderFlight(){
   const sq = el("div","sqk");
   sq.appendChild(el("div","big num", esc(Net.squawk)));
   const meta = el("div","meta");
-  meta.appendChild(el("div","lbl","Squawk"));
+  meta.appendChild(el("div","lbl", tx("Squawk")));
   meta.appendChild(el("p", null, Net.isHost
-    ? "Send this to your friends. They need the link and the squawk."
-    : "Host: " + esc((Net.roster.get(Net.hostPid) || {}).call || "—")));
+    ? tx("Send this to your friends. They need the link and the squawk.")
+    : tx("Host: {call}", {call:esc((Net.roster.get(Net.hostPid) || {}).call || "—")})));
   sq.appendChild(meta);
   if (Net.isHost){
-    const cp = mkBtn("Copy link","sm", async () => {
+    const cp = mkBtn(tx("Copy link"),"sm", async () => {
       const txt = location.href.split("#")[0] + "#" + Net.squawk;
-      try { await navigator.clipboard.writeText(txt); cp.textContent = "Copied"; }
-      catch(e){ cp.textContent = "Copy failed"; }
-      setTimeout(() => cp.textContent = "Copy link", 1700);
+      try { await navigator.clipboard.writeText(txt); cp.textContent = tx("Copied"); }
+      catch(e){ cp.textContent = tx("Copy failed"); }
+      setTimeout(() => cp.textContent = tx("Copy link"), 1700);
     });
     sq.appendChild(cp);
   }
   pane.appendChild(sq);
   if (Net.isHost){
     if (NetCheck.state === "local")
-      pane.appendChild(el("div","warn","Friends on other networks may not reach you."));
+      pane.appendChild(el("div","warn", tx("Friends on other networks may not reach you.")));
     pane.appendChild(netCheckStrip());
   }
 
   /* 승인 대기 요청 (호스트) */
   if (Net.isHost && Net.requests.length){
     const w = el("div","brief");
-    w.appendChild(el("div","lbl", Net.requests.length + " request" +
-      (Net.requests.length > 1 ? "s" : "") + " to join"));
+    w.appendChild(el("div","lbl", tx(Net.requests.length > 1 ? "{n} requests to join" : "{n} request to join", {n:Net.requests.length})));
     Net.requests.forEach(r => {
       const row = el("div","req");
       row.appendChild(el("div","who", esc(r.call)));
-      row.appendChild(mkBtn("Decline","sm dgr", () => Net.deny(r.pid)));
-      row.appendChild(mkBtn("Admit","sm pri", () => Net.approve(r.pid)));
+      row.appendChild(mkBtn(tx("Decline"),"sm dgr", () => Net.deny(r.pid)));
+      row.appendChild(mkBtn(tx("Admit"),"sm pri", () => Net.approve(r.pid)));
       w.appendChild(row);
     });
     pane.appendChild(w);
@@ -1601,8 +1919,7 @@ function renderFlight(){
   /* 명단 */
   const rl = el("div");
   rl.style.cssText = "display:flex;flex-direction:column;gap:9px";
-  rl.appendChild(el("div","lbl", "Flight · " + Net.roster.size +
-    (Net.roster.size === 1 ? " aircraft" : " aircraft")));
+  rl.appendChild(el("div","lbl", tx("Flight · {n} aircraft", {n:Net.roster.size})));
   const rs = el("div","roster");
   [...Net.roster.values()]
     .sort((a, b) => (b.host ? 1 : 0) - (a.host ? 1 : 0) || a.call.localeCompare(b.call))
@@ -1613,12 +1930,12 @@ function renderFlight(){
       const st = Net.states.get(r.pid);
       const flying = st && st.st !== "off";
       row.appendChild(el("div","who","<b>" + esc(r.call) + "</b><i>" +
-        (flying ? (st.st === "down" ? "Down" : "Airborne") : "Standing by") + "</i>"));
+        (flying ? (st.st === "down" ? tx("Down") : tx("Airborne")) : tx("Standing by")) + "</i>"));
       /* k/d 는 상대가 보낸 값이다 — 숫자로 만들지 않으면 HTML 로 그대로 들어간다 */
       if (flying) row.appendChild(el("div","kd","<b>" + (Number(st.k) | 0) + "</b> / " + (Number(st.d) | 0)));
-      if (r.host) row.appendChild(el("span","tag host","Host"));
-      if (r.pid === NETID) row.appendChild(el("span","tag you","You"));
-      else row.appendChild(mkBtn("Trade","sm", () => openTrade(r.pid)));
+      if (r.host) row.appendChild(el("span","tag host", tx("Host")));
+      if (r.pid === NETID) row.appendChild(el("span","tag you", tx("You")));
+      else row.appendChild(mkBtn(tx("Trade"),"sm", () => openTrade(r.pid)));
       rs.appendChild(row);
     });
   rl.appendChild(rs);
@@ -1627,10 +1944,8 @@ function renderFlight(){
   /* 초대 명단 (호스트) */
   if (Net.isHost){
     const iv = el("div","brief");
-    iv.appendChild(el("div","lbl","Invite list"));
-    iv.appendChild(el("div","note",
-      "Callsigns listed here come straight in. Leave it empty and you approve every " +
-      "arrival by hand."));
+    iv.appendChild(el("div","lbl", tx("Invite list")));
+    iv.appendChild(el("div","note", tx("Callsigns listed here come straight in. Leave it empty and you approve every arrival by hand.")));
     const chips = el("div","pick");
     Net.invited.forEach(c => {
       const b = el("button", "on", esc(c) + " ✕"); b.type = "button";
@@ -1639,10 +1954,10 @@ function renderFlight(){
       });
       chips.appendChild(b);
     });
-    if (!Net.invited.length) chips.appendChild(el("span","note","(empty)"));
+    if (!Net.invited.length) chips.appendChild(el("span","note", tx("(empty)")));
     iv.appendChild(chips);
     const row = el("div"); row.style.cssText = "display:flex;gap:8px";
-    const inp = el("input","inp"); inp.placeholder = "Callsign"; inp.maxLength = 14;
+    const inp = el("input","inp"); inp.placeholder = tx("Callsign"); inp.maxLength = 14;
     const add = () => {
       const v = inp.value.trim().toUpperCase(); if (!v) return;
       if (!Net.invited.includes(v)) Net.invited.push(v);
@@ -1651,7 +1966,7 @@ function renderFlight(){
       inp.value = ""; renderFlight();
     };
     inp.addEventListener("keydown", e => { if (e.key === "Enter") add(); });
-    row.appendChild(inp); row.appendChild(mkBtn("Add","", add));
+    row.appendChild(inp); row.appendChild(mkBtn(tx("Add"),"", add));
     iv.appendChild(row);
 
     const oa = el("label");
@@ -1660,7 +1975,7 @@ function renderFlight(){
     const cb = el("input"); cb.type = "checkbox"; cb.checked = Net.openToAll;
     cb.addEventListener("change", () => { Net.openToAll = cb.checked; renderFlight(); });
     oa.appendChild(cb);
-    oa.appendChild(el("span", null, "Admit anyone who knows the squawk, without approval"));
+    oa.appendChild(el("span", null, tx("Admit anyone who knows the squawk, without approval")));
     iv.appendChild(oa);
     pane.appendChild(iv);
   }
@@ -1668,7 +1983,7 @@ function renderFlight(){
   /* 출격 / 이탈 */
   const act = el("div"); act.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
   if (!hot) act.appendChild(launchBtn());
-  act.appendChild(mkBtn(Net.isHost ? "Disband" : "Leave", "dgr", () => Net.leaveFlight()));
+  act.appendChild(mkBtn(Net.isHost ? tx("Disband") : tx("Leave"), "dgr", () => Net.leaveFlight()));
   pane.appendChild(act);
 }
 
@@ -1699,27 +2014,27 @@ function bagList(){ return Object.keys(P.bag).filter(k => P.bag[k] > 0 && PARTS[
 
 function openTrade(toPid){
   const target = Net.roster.get(toPid);
-  if (!target){ sysLog("That pilot is no longer in the flight."); return; }
+  if (!target){ sysLog(tx("That pilot is no longer in the flight.")); return; }
 
   const give = { cred:0, items:[] }, want = { cred:0, items:[] };
   const body = el("div");
   body.style.cssText = "display:flex;flex-direction:column;gap:14px";
   body.appendChild(el("div","note",
-    "An offer to <b>" + esc(target.call) + "</b>. If they accept, both records update at once."));
+    tx("An offer to <b>{call}</b>. If they accept, both records update at once.", {call:esc(target.call)})));
 
   const grid = el("div","trade");
 
   const mine = el("div");
-  mine.appendChild(el("h4","mine","You give"));
-  mine.appendChild(el("span","lbl","Credits — " + P.cred.toLocaleString("en-US") + " available"));
+  mine.appendChild(el("h4","mine", tx("You give")));
+  mine.appendChild(el("span","lbl", tx("Credits — {n} available", {n:P.cred.toLocaleString("en-US")})));
   const mc = el("input","inp"); mc.type = "number"; mc.min = "0"; mc.max = String(P.cred);
-  mc.value = "0"; mc.setAttribute("aria-label","Credits to give");
+  mc.value = "0"; mc.setAttribute("aria-label", tx("Credits to give"));
   mc.addEventListener("input", () => { give.cred = clamp(parseInt(mc.value || "0", 10) || 0, 0, P.cred); });
   mine.appendChild(mc);
-  mine.appendChild(el("span","lbl","Parts"));
+  mine.appendChild(el("span","lbl", tx("Parts")));
   const mp = el("div","pick");
   const owned = bagList();
-  if (!owned.length) mp.appendChild(el("span","note","Nothing stowed"));
+  if (!owned.length) mp.appendChild(el("span","note", tx("Nothing stowed")));
   owned.forEach(id => {
     const b = el("button", null, esc(PARTS[id].n)); b.type = "button";
     b.addEventListener("click", () => {
@@ -1733,13 +2048,13 @@ function openTrade(toPid){
   grid.appendChild(mine);
 
   const theirs = el("div");
-  theirs.appendChild(el("h4", null, esc(target.call) + " gives"));
-  theirs.appendChild(el("span","lbl","Credits"));
+  theirs.appendChild(el("h4", null, tx("{call} gives", {call:esc(target.call)})));
+  theirs.appendChild(el("span","lbl", tx("Credits")));
   const tc = el("input","inp"); tc.type = "number"; tc.min = "0"; tc.value = "0";
-  tc.setAttribute("aria-label","Credits to receive");
+  tc.setAttribute("aria-label", tx("Credits to receive"));
   tc.addEventListener("input", () => { want.cred = Math.max(0, parseInt(tc.value || "0", 10) || 0); });
   theirs.appendChild(tc);
-  theirs.appendChild(el("span","lbl","Parts — checked when they accept"));
+  theirs.appendChild(el("span","lbl", tx("Parts — checked when they accept")));
   const tp = el("div","pick");
   Object.keys(PARTS).forEach(id => {
     const b = el("button", null, esc(PARTS[id].n)); b.type = "button";
@@ -1756,11 +2071,11 @@ function openTrade(toPid){
 
   const send = () => {
     if (!give.cred && !give.items.length && !want.cred && !want.items.length){
-      sysLog("That offer is empty."); return;
+      sysLog(tx("That offer is empty.")); return;
     }
-    if (give.cred > P.cred){ sysLog("You do not have that many credits."); return; }
-    for (const id of give.items) if (!P.bag[id]){ sysLog("You no longer hold one of those parts."); return; }
-    if (!Net.up || !Net.roster.has(toPid)){ sysLog("That pilot is no longer in the flight."); closeModal(); return; }
+    if (give.cred > P.cred){ sysLog(tx("You do not have that many credits.")); return; }
+    for (const id of give.items) if (!P.bag[id]){ sysLog(tx("You no longer hold one of those parts.")); return; }
+    if (!Net.up || !Net.roster.has(toPid)){ sysLog(tx("That pilot is no longer in the flight.")); closeModal(); return; }
     const id = "t" + Math.random().toString(36).slice(2, 10);
     const payload = { t:"trade", sub:"offer", id, from:NETID, fromCall:P.call, to:toPid, give, want };
     /* 내놓을 몫은 보낼 때 떼어 둔다(에스크로). 같은 부품을 두 사람에게 동시에
@@ -1770,21 +2085,21 @@ function openTrade(toPid){
     save(); renderPilot();
     const who = target.call;
     pendingOffers.set(id, { give, want, to:toPid, timer: setTimeout(() => {
-      if (refundOffer(id)) sysLog("Your offer to " + who + " expired. Your side was returned.");
+      if (refundOffer(id)) sysLog(tx("Your offer to {call} expired. Your side was returned.", {call:who}));
     }, OFFER_TTL) });
     Net.send(payload);
-    sysLog("Offer sent to " + target.call + ".");
+    sysLog(tx("Offer sent to {call}.", {call:target.call}));
     closeModal();
   };
-  openModal("Trade · " + target.call, body,
-    [mkBtn("Cancel","",closeModal), mkBtn("Send offer","pri",send)]);
+  openModal(tx("Trade · {call}", {call:target.call}), body,
+    [mkBtn(tx("Cancel"),"",closeModal), mkBtn(tx("Send offer"),"pri",send)]);
 }
 
 function describeSide(s){
   const bits = [];
-  if (s.cred) bits.push(s.cred.toLocaleString("en-US") + " credits");
+  if (s.cred) bits.push(tx("{n} credits", {n:s.cred.toLocaleString("en-US")}));
   (s.items || []).forEach(id => PARTS[id] && bits.push(PARTS[id].n));
-  return bits.length ? bits.join(", ") : "nothing";
+  return bits.length ? bits.join(", ") : tx("nothing");
 }
 
 function showOffer(m){
@@ -1792,46 +2107,46 @@ function showOffer(m){
   body.style.cssText = "display:flex;flex-direction:column;gap:12px";
   const g = el("div","trade");
   const a = el("div");
-  a.appendChild(el("h4","mine", esc(m.fromCall) + " gives"));
+  a.appendChild(el("h4","mine", tx("{call} gives", {call:esc(m.fromCall)})));
   a.appendChild(el("div", null, esc(describeSide(m.give)))); g.appendChild(a);
   const b = el("div");
-  b.appendChild(el("h4", null, "You give"));
+  b.appendChild(el("h4", null, tx("You give")));
   b.appendChild(el("div", null, esc(describeSide(m.want)))); g.appendChild(b);
   body.appendChild(g);
 
   const lack = [];
-  if ((m.want.cred || 0) > P.cred) lack.push("not enough credits");
+  if ((m.want.cred || 0) > P.cred) lack.push(tx("not enough credits"));
   (m.want.items || []).forEach(id => {
-    if (!P.bag[id]) lack.push("no " + (PARTS[id] ? PARTS[id].n : "part"));
+    if (!P.bag[id]) lack.push(tx("no {part}", {part: PARTS[id] ? PARTS[id].n : tx("part")}));
   });
   if (lack.length)
-    body.appendChild(el("div","warn","You cannot accept — " + esc(lack.join(", ")) + "."));
+    body.appendChild(el("div","warn",tx("You cannot accept — {why}.", {why:esc(lack.join(", "))})));
 
   const got = now();
   const accept = () => {
     if (lack.length) return;
     /* 상대가 떠났거나 제안이 만료됐으면 내 쪽만 거래가 확정된다 — 막는다 */
     if (!Net.up || !Net.roster.has(m.from)){
-      sysLog("That pilot has left the flight. The offer is void."); closeModal(); return;
+      sysLog(tx("That pilot has left the flight. The offer is void.")); closeModal(); return;
     }
-    if (now() - got > OFFER_ACCEPT){ sysLog("That offer has expired."); closeModal(); return; }
+    if (now() - got > OFFER_ACCEPT){ sysLog(tx("That offer has expired.")); closeModal(); return; }
     if (m.want.cred > P.cred || m.want.items.some(id => !P.bag[id])){
-      sysLog("You no longer have what they asked for."); closeModal(); return;
+      sysLog(tx("You no longer have what they asked for.")); closeModal(); return;
     }
     P.cred += (m.give.cred || 0) - (m.want.cred || 0);
     (m.give.items || []).forEach(id => P.bag[id] = (P.bag[id] || 0) + 1);
     (m.want.items || []).forEach(id => { P.bag[id]--; if (!P.bag[id]) delete P.bag[id]; });
     save(); renderPilot();
     Net.send({ t:"trade", sub:"accept", id:m.id, to:m.from, from:NETID, call:P.call });
-    sysLog("Trade complete with " + m.fromCall + ".");
+    sysLog(tx("Trade complete with {call}.", {call:m.fromCall}));
     closeModal();
   };
   const decline = () => {
     Net.send({ t:"trade", sub:"decline", id:m.id, to:m.from, from:NETID, call:P.call });
     closeModal();
   };
-  const ok = mkBtn("Accept","pri",accept); if (lack.length) ok.disabled = true;
-  openModal("Offer from " + m.fromCall, body, [mkBtn("Decline","dgr",decline), ok]);
+  const ok = mkBtn(tx("Accept"),"pri",accept); if (lack.length) ok.disabled = true;
+  openModal(tx("Offer from {call}", {call:m.fromCall}), body, [mkBtn(tx("Decline"),"dgr",decline), ok]);
 }
 
 Net.on("trade", m => {
@@ -1845,14 +2160,14 @@ Net.on("trade", m => {
   if (m.from !== mine.to) return;               // 제안받은 사람만 답할 수 있다
   if (m.sub === "decline"){
     refundOffer(m.id);
-    sysLog((m.call || "They") + " declined the trade. Your side was returned."); return;
+    sysLog(m.call ? tx("{call} declined the trade. Your side was returned.", {call:m.call}) : tx("They declined the trade. Your side was returned.")); return;
   }
   if (m.sub === "accept"){
     clearTimeout(mine.timer); pendingOffers.delete(m.id);
     P.cred += mine.want.cred || 0;              // 내 몫은 보낼 때 이미 떼어 뒀다
     (mine.want.items || []).forEach(id => P.bag[id] = (P.bag[id] || 0) + 1);
     save(); renderPilot();
-    sysLog("Trade complete with " + (m.call || "your wingman") + ".");
+    sysLog(tx("Trade complete with {call}.", {call:m.call || tx("your wingman")}));
   }
 });
 
@@ -1864,9 +2179,8 @@ Net.on("chat", m => {
 $("#bTrade").addEventListener("click", () => {
   const others = [...Net.roster.values()].filter(r => r.pid !== NETID);
   if (!others.length){
-    const b = el("div","note",
-      "Trading needs someone to trade with. Open a flight or join one on a squawk first.");
-    openModal("Trade", b, [mkBtn("Close","",closeModal)]);
+    const b = el("div","note", tx("Trading needs someone to trade with. Open a flight or join one on a squawk first."));
+    openModal(tx("Trade"), b, [mkBtn(tx("Close"),"",closeModal)]);
     return;
   }
   const box = el("div","roster");
@@ -1875,10 +2189,10 @@ $("#bTrade").addEventListener("click", () => {
     const dot = el("span","dot"); dot.style.color = r.color || "#8A8A8A";
     row.appendChild(dot);
     row.appendChild(el("div","who","<b>" + esc(r.call) + "</b>"));
-    row.appendChild(mkBtn("Offer","sm pri", () => { closeModal(); openTrade(r.pid); }));
+    row.appendChild(mkBtn(tx("Offer"),"sm pri", () => { closeModal(); openTrade(r.pid); }));
     box.appendChild(row);
   });
-  openModal("Choose a trading partner", box, [mkBtn("Close","",closeModal)]);
+  openModal(tx("Choose a trading partner"), box, [mkBtn(tx("Close"),"",closeModal)]);
 });
 </script>
 <script>
@@ -2465,7 +2779,7 @@ function startSortie(solo){
 
   P.sorties++; save();
   renderPilot();
-  Chat.push("ops","", Game.solo ? "Solo training sortie." : "Airborne. Engagement area radius 2.3 km.", true);
+  Chat.push("ops","", Game.solo ? tx("Solo training sortie.") : tx("Airborne. Engagement area radius 2.3 km."), true);
 
   Game.running = true; Game.last = now(); Game.netAcc = 0;
   cancelAnimationFrame(Game.raf);
@@ -2834,7 +3148,7 @@ function die(byCall, byPid){
   me.d++; me.streak = 0; P.d++; save();
   Boom.at(me.pos, 105, 1.4);
   Game.jet.visible = false;
-  showMsg("Shot down", (byCall ? "Hit by " + byCall + ". " : "") + "Respawn in 5 s.");
+  showMsg(tx("Shot down"), (byCall ? tx("Hit by {call}.", {call:tx(byCall)}) + " " : "") + tx("Respawn in 5 s."));
   addFeed(byCall || "—", P.call, true);
   if (Net.up) Net.send({t:"down", victim:NETID, vcall:P.call, killer:byPid||null, kcall:byCall||null});
   renderPilot();
@@ -2865,8 +3179,8 @@ function creditKill(victimName, loot){
   if (me.streak > P.streak) P.streak = me.streak;
   const got = loot ? salvage() : null;      // 파일럿 격추만 — 훈련 드론은 부품을 떨구지 않는다
   save(); renderPilot();
-  showMsg("Splash", victimName + " · +" + CFG.killCred + " cr" +
-          (got ? " · salvaged " + got : ""), HUD_A);
+  showMsg(tx("Splash"), victimName + " · +" + CFG.killCred + " cr" +
+          (got ? " · " + tx("salvaged {part}", {part:got}) : ""), HUD_A);
 }
 function addFeed(killer, victim, meDown){
   const box = $("#feed");
@@ -2894,7 +3208,7 @@ function stepMe(dt){
   const me = Game.me;
 
   if (!me.alive){
-    if (now() >= me.respawnAt){ spawnPoint(me); Game.jet.visible = true; showMsg("Airborne","", "#000000"); }
+    if (now() >= me.respawnAt){ spawnPoint(me); Game.jet.visible = true; showMsg(tx("Airborne@respawn"),"", "#000000"); }
     return;
   }
 
@@ -3007,7 +3321,7 @@ function stepMe(dt){
         q:[r3(me.quat.x),r3(me.quat.y),r3(me.quat.z),r3(me.quat.w)],
         v:[r1(me.vel.x),r1(me.vel.y),r1(me.vel.z)], call:P.call});
       Chat.push("ops","", P.call + " — Fox two", true);
-    } else if (me.msl <= 0) showMsg("Winchester","No missiles remaining", "#E11900");
+    } else if (me.msl <= 0) showMsg(tx("Winchester"), tx("No missiles remaining"), "#E11900");
     else me.noLockT = now() + 600;   // 탄은 있는데 록온 없음 — HUD 스트립만, 소리·팝업 없음
   }
   if (!wantMsl) me.mslHeld = false;
@@ -3056,7 +3370,7 @@ Net.on("msl", m => {
   const tk = m.tgt === NETID || m.tgt == null || String(m.tgt).startsWith("d:") ? null : m.tgt;
   const mm = launchMissile(pos, q, v, tk, false);
   mm.byCall = m.call; mm.byPid = m.from || null;   // 격추되면 쏜 사람에게 공이 간다
-  if (m.tgt === NETID){ mm.tgt = "me"; showMsg("Missile", "Launched by " + (m.call||"bandit"), "#E11900"); }
+  if (m.tgt === NETID){ mm.tgt = "me"; showMsg(tx("Missile@warn"), tx("Launched by {call}", {call:m.call || tx("bandit")}), "#E11900"); }
 });
 
 /* ── 카메라 ───────────────────────────────────────────────── */
@@ -3137,7 +3451,7 @@ function paintAwayNotice(){
     n.id = "away";
     n.style.cssText = "position:absolute;left:50%;top:14px;transform:translateX(-50%);" +
       "z-index:19;padding:9px 16px;font-size:12.5px;color:var(--caution);pointer-events:none";
-    n.textContent = "Paused — this tab is in the background. Your aircraft is not flying.";
+    n.textContent = tx("Paused — this tab is in the background. Your aircraft is not flying.");
     $("#game").appendChild(n);
   } else if (!on && n){ n.remove(); }
 }
@@ -3156,8 +3470,8 @@ function paintAsk(){
   box.classList.remove("hide"); box.innerHTML = "";
   list.slice(0, 3).forEach((r, i) => {
     const d = el("div","a");
-    d.appendChild(el("b", null, esc(r.call) + " wants in"));
-    if (i === 0) d.appendChild(el("i", null, "Y admit \u00b7 N decline"));
+    d.appendChild(el("b", null, tx("{call} wants in", {call:esc(r.call)})));
+    if (i === 0) d.appendChild(el("i", null, tx("Y admit · N decline")));
     box.appendChild(d);
   });
 }
@@ -3174,8 +3488,8 @@ function paintTips(){
   t.innerHTML = "";
   rows.forEach(([k, v]) => {
     const sp = el("span");
-    sp.appendChild(el("b", null, esc(k)));
-    sp.appendChild(document.createTextNode(" " + v));
+    sp.appendChild(el("b", null, esc(tx(k))));
+    sp.appendChild(document.createTextNode(" " + tx(v)));
     t.appendChild(sp);
   });
 }
@@ -3717,25 +4031,25 @@ const Models = {
   _parse(buf, ext){
     return new Promise((res, rej) => {
       if (ext === "obj"){
-        if (!THREE.OBJLoader) return rej(new Error("The OBJ loader did not load."));
+        if (!THREE.OBJLoader) return rej(new Error(tx("The OBJ loader did not load.")));
         try {
           const txt = new TextDecoder().decode(buf);
           res(new THREE.OBJLoader().parse(txt));
         } catch(e){ rej(e); }
         return;
       }
-      if (!THREE.GLTFLoader) return rej(new Error("The GLTF loader did not load."));
+      if (!THREE.GLTFLoader) return rej(new Error(tx("The GLTF loader did not load.")));
       new THREE.GLTFLoader().parse(buf, "", g => res(g.scene || g.scenes[0]), rej);
     });
   },
 
   async fromBuffer(key, buf, ext){
     const obj = await this._parse(buf, ext);
-    if (!obj) throw new Error("That file contains no model.");
+    if (!obj) throw new Error(tx("That file contains no model."));
     splitByMaterial(obj);
     let meshes = 0;
     obj.traverse(o => { if (o.isMesh) meshes++; });
-    if (!meshes) throw new Error("No meshes in that file. Check that geometry was exported.");
+    if (!meshes) throw new Error(tx("No meshes in that file. Check that geometry was exported."));
     this.cache.set(key, obj);
     return obj;
   },
@@ -3743,7 +4057,7 @@ const Models = {
   async fromUrl(url){
     if (this.cache.has(url)) return this.cache.get(url);
     if (this.pending.has(url)) return this.pending.get(url);
-    if (this.failed.has(url)) throw new Error("That file failed to load earlier.");
+    if (this.failed.has(url)) throw new Error(tx("That file failed to load earlier."));
     const job = this._fetchModel(url);
     this.pending.set(url, job);
     try { return await job; }
@@ -3753,11 +4067,11 @@ const Models = {
   async _fetchModel(url){
     const ext = (url.split("?")[0].split(".").pop() || "").toLowerCase();
     if (!["glb","gltf","obj"].includes(ext))
-      throw new Error("Only .glb, .gltf and .obj can be read.");
+      throw new Error(tx("Only .glb, .gltf and .obj can be read."));
     const r = await fetch(url);
-    if (!r.ok) throw new Error("Fetch failed (" + r.status + "). Check the path.");
+    if (!r.ok) throw new Error(tx("Fetch failed ({code}). Check the path.", {code:r.status}));
     if ((Number(r.headers.get("content-length")) || 0) > 24 * 1024 * 1024)
-      throw new Error("That file is over 24 MB.");
+      throw new Error(tx("That file is over 24 MB."));
     const buf = await r.arrayBuffer();
     if (ext === "gltf"){
       /* .gltf 는 텍스처·bin 이 따로 있어 상대경로 해석이 필요하다 */
@@ -3791,7 +4105,7 @@ function tinkerHex(name){
 }
 function partLabel(name){
   const h = tinkerHex(name);
-  return h ? "Colour " + h.toUpperCase() : name;
+  return h ? tx("Colour {hex}", {hex:h.toUpperCase()}) : name;
 }
 
 /* 팅커캐드처럼 이름 없이 색(재질)만으로 나뉜 OBJ 는 OBJLoader 가
@@ -4089,8 +4403,7 @@ function openHangar(){
   const body = el("div");
   body.style.cssText = "display:flex;flex-direction:column;gap:18px";
 
-  const info = el("div","note",
-    "Your flight sees whatever airframe you pick here. Import your own model below.");
+  const info = el("div","note", tx("Your flight sees whatever airframe you pick here. Import your own model below."));
   body.appendChild(info);
 
   const bay = el("div","bay");
@@ -4102,15 +4415,15 @@ function openHangar(){
     if (P.custom && Models.cache.get(P.custom.src)) keys.push("custom");
     keys.forEach(k => {
       const def = k === "custom"
-        ? { nameKo: P.custom.name || "My airframe",
-            note: P.custom.shared ? "Bundled · seen by the flight" : "This browser only" }
+        ? { nameKo: P.custom.name || tx("My airframe"),
+            note: P.custom.shared ? tx("Bundled · seen by the flight") : tx("This browser only") }
         : jetDef(k);
       const card = el("button", "bayc" + (P.jet === k ? " on" : ""));
       card.type = "button";
       const cv = el("canvas"); card.appendChild(cv);
       card.appendChild(el("b", null, esc(def.nameKo)));
       card.appendChild(el("i", null, esc(def.note || "")));
-      if (k === "custom") card.appendChild(el("span","mine","Imported"));
+      if (k === "custom") card.appendChild(el("span","mine", tx("Imported")));
       card.addEventListener("click", () => {
         P.jet = k; save(); renderPilot(); swapMyJet(); Attract.sync(); drawBay();
         if (typeof drawPaint === "function") drawPaint();
@@ -4141,8 +4454,8 @@ function openHangar(){
     if (!ps || !ps.src) return;                 // 프리미티브 기체는 도장 대상이 아니다
     const list = listParts(ps.src);
     if (!list.length) return;
-    paintBox.appendChild(el("div","lbl","Paint \u00b7 " +
-      (P.jet === "custom" && P.custom ? esc(P.custom.name || "Custom model") : jetDef(P.jet).nameKo)));
+    paintBox.appendChild(el("div","lbl", tx("Paint · {name}", {name: P.jet === "custom" && P.custom
+      ? esc(P.custom.name || tx("Custom model")) : jetDef(P.jet).nameKo})));
     const grid = el("div");
     grid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:5px 12px";
     const store = () => (P.paint[ps.key] = P.paint[ps.key] || {});
@@ -4174,13 +4487,13 @@ function openHangar(){
         store().__booster = sw.value; save();
         swapMyJet(); Attract.sync(); drawBay();
       });
-      const nm = el("span", null, "Booster");
+      const nm = el("span", null, tx("Booster"));
       nm.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
       row.appendChild(sw); row.appendChild(nm);
       grid.appendChild(row);
     }
     paintBox.appendChild(grid);
-    const reset = mkBtn("Reset colours","sm", () => {
+    const reset = mkBtn(tx("Reset colours"),"sm", () => {
       delete P.paint[ps.key]; save(); swapMyJet(); Attract.sync(); drawBay(); drawPaint();
     });
     const row2 = el("div"); row2.style.cssText = "display:flex;justify-content:flex-end";
@@ -4189,13 +4502,13 @@ function openHangar(){
   drawPaint();
 
   /* ── 반입 ── */
-  body.appendChild(el("div","lbl","Import your own model"));
+  body.appendChild(el("div","lbl", tx("Import your own model")));
   const drop = el("div","drop",
-    "<b>Drop a .glb, .gltf or .obj file here</b>" +
-    "Dropped files stay in <b>this browser only</b>. To let your flight see it too, use the path field below.");
+    "<b>" + tx("Drop a .glb, .gltf or .obj file here") + "</b>" +
+    tx("Dropped files stay in <b>this browser only</b>. To let your flight see it too, use the path field below."));
   body.appendChild(drop);
 
-  const pickBtn = mkBtn("Choose file","", () => fileInput.click());
+  const pickBtn = mkBtn(tx("Choose file"),"", () => fileInput.click());
   pickBtn.classList.add("sm");
   const fileInput = el("input"); fileInput.type = "file";
   fileInput.accept = ".glb,.gltf,.obj"; fileInput.style.display = "none";
@@ -4203,24 +4516,20 @@ function openHangar(){
 
   const urlRow = el("div"); urlRow.style.cssText = "display:flex;gap:8px;align-items:flex-end";
   const urlF = el("div","field"); urlF.style.flex = "1";
-  urlF.appendChild(el("span","lbl","Path to a file bundled with the site"));
+  urlF.appendChild(el("span","lbl", tx("Path to a file bundled with the site")));
   const urlI = el("input","inp");
   urlI.placeholder = "myjet.glb";
   urlI.value = (P.custom && P.custom.shared && P.custom.src) || "";
   urlF.appendChild(urlI);
   urlRow.appendChild(urlF);
-  urlRow.appendChild(mkBtn("Load","", () => loadFromUrl(urlI.value.trim())));
+  urlRow.appendChild(mkBtn(tx("Load"),"", () => loadFromUrl(urlI.value.trim())));
   body.appendChild(urlRow);
-  body.appendChild(el("div","note",
-    "Put the model file next to index.html and type its name. Anyone who opens your link " +
-    "downloads the same file, so the whole flight sees the same airframe."));
+  body.appendChild(el("div","note", tx("Put the model file next to index.html and type its name. Anyone who opens your link downloads the same file, so the whole flight sees the same airframe.")));
 
   /* ── 자세 보정 ── */
   const tune = el("div","brief"); tune.classList.add("hide");
-  tune.appendChild(el("div","lbl","Orientation"));
-  tune.appendChild(el("div","note",
-    "Every exporter points the nose down a different axis. Rotate until the nose points " +
-    "<b>up and to the right, away from you</b> — the burner cone marks the tail."));
+  tune.appendChild(el("div","lbl", tx("Orientation")));
+  tune.appendChild(el("div","note", tx("Every exporter points the nose down a different axis. Rotate until the nose points <b>up and to the right, away from you</b> — the burner cone marks the tail.")));
 
   const prevCv = el("canvas");
   prevCv.style.cssText = "width:100%;max-width:280px;aspect-ratio:4/3;" +
@@ -4230,7 +4539,7 @@ function openHangar(){
   const ctl = el("div"); ctl.style.cssText = "display:flex;flex-direction:column;gap:10px";
   const mkRange = (label, min, max, step, val, fn) => {
     const w = el("div"); w.style.cssText = "display:flex;align-items:center;gap:10px";
-    const l = el("span","lbl", label); l.style.width = "62px";
+    const l = el("span","lbl", tx(label)); l.style.width = "62px";
     const r = el("input"); r.type = "range"; r.min = min; r.max = max; r.step = step;
     r.value = val; r.style.flex = "1"; r.style.accentColor = "#E11900";
     const o = el("span","num"); o.style.cssText = "width:52px;text-align:right;font-size:12px";
@@ -4255,7 +4564,7 @@ function openHangar(){
   const tintC = el("input"); tintC.type = "checkbox";
   tintC.addEventListener("change", () => { draft.tint = tintC.checked; repaint(); });
   tintW.appendChild(tintC);
-  tintW.appendChild(el("span",null,"Paint the whole airframe in my pilot colour"));
+  tintW.appendChild(el("span",null, tx("Paint the whole airframe in my pilot colour")));
   ctl.appendChild(tintW);
   tune.appendChild(ctl);
 
@@ -4266,13 +4575,10 @@ function openHangar(){
     partsBox.innerHTML = "";
     const list = draft ? listParts(Models.cache.get(draft.src)) : [];
     if (!list.length){
-      partsBox.appendChild(el("div","note",
-        "This model has no separate parts, so it can only be painted as one piece. " +
-        "Name the meshes in your 3D tool — or, in Tinkercad, give each part its own colour: " +
-        "every colour becomes a part here."));
+      partsBox.appendChild(el("div","note", tx("This model has no separate parts, so it can only be painted as one piece. Name the meshes in your 3D tool — or, in Tinkercad, give each part its own colour: every colour becomes a part here.")));
       return;
     }
-    partsBox.appendChild(el("div","lbl","Parts \u00b7 " + list.length));
+    partsBox.appendChild(el("div","lbl", tx("Parts · {n}", {n:list.length})));
     const roleOf = p => (draft.roles && draft.roles[p.name] !== undefined) ? draft.roles[p.name]
                         : p.engine ? "engine" : p.prop ? "prop" : "";
     const hasProp = list.some(p => roleOf(p) === "prop"), hasEng = list.some(p => roleOf(p) === "engine");
@@ -4293,7 +4599,7 @@ function openHangar(){
       const cur = (draft.roles && draft.roles[p.name] !== undefined) ? draft.roles[p.name]
                 : p.engine ? "engine" : p.prop ? "prop" : "";
       [["","part"],["engine","engine"],["prop","prop"],["glow","glow"]].forEach(([v,t]) => {
-        const o = el("option", null, t); o.value = v; if (v === cur) o.selected = true; sel.appendChild(o);
+        const o = el("option", null, tx(t)); o.value = v; if (v === cur) o.selected = true; sel.appendChild(o);
       });
       sel.addEventListener("click", e => e.stopPropagation());
       sel.addEventListener("change", () => {
@@ -4303,28 +4609,28 @@ function openHangar(){
       grid.appendChild(row);
     });
     partsBox.appendChild(grid);
-    if (list.length > 40) partsBox.appendChild(el("div","note","Showing the first 40 parts."));
+    if (list.length > 40) partsBox.appendChild(el("div","note", tx("Showing the first 40 parts.")));
     partsBox.appendChild(el("div","note",
-      (hasEng ? "Engine parts found \u2014 the burner sits on each of them. " :
-                "No part is named engine/nozzle/exhaust, so the burner sits at the tail. ") +
-      (hasProp ? "Propeller parts found \u2014 they spin with the throttle." : "")));
+      (hasEng ? tx("Engine parts found — the burner sits on each of them.")
+              : tx("No part is named engine/nozzle/exhaust, so the burner sits at the tail.")) +
+      (hasProp ? " " + tx("Propeller parts found — they spin with the throttle.") : "")));
     if (hasProp){
       const ax = el("div","rng");
-      ax.appendChild(el("span","lbl","Prop axis"));
+      ax.appendChild(el("span","lbl", tx("Prop axis")));
       const sel = el("select","inp"); sel.style.width = "auto";
       ["z","x","y"].forEach(v => { const o = el("option", null, v.toUpperCase()); o.value = v; if ((draft.propAxis||"z") === v) o.selected = true; sel.appendChild(o); });
       sel.addEventListener("change", () => { draft.propAxis = sel.value; repaint(); });
       ax.appendChild(sel);
-      ax.appendChild(el("span","note","Pick the axis the propeller spins around in your file."));
+      ax.appendChild(el("span","note", tx("Pick the axis the propeller spins around in your file.")));
       partsBox.appendChild(ax);
     }
   }
 
   const applyRow = el("div"); applyRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
-  applyRow.appendChild(mkBtn("Apply","pri", () => {
+  applyRow.appendChild(mkBtn(tx("Apply"),"pri", () => {
     P.custom = draft; P.jet = "custom"; save();
     renderPilot(); swapMyJet(); drawBay();
-    sysLog("Airframe changed to " + (draft.name || "your model") + ".");
+    sysLog(tx("Airframe changed to {name}.", {name:draft.name || tx("your model")}));
     tune.classList.add("hide");
   }));
   tune.appendChild(applyRow);
@@ -4349,15 +4655,15 @@ function openHangar(){
       r.parentNode.lastChild.textContent = r.value;
     });
     repaint();
-    okmsg(name + " loaded. Set the nose direction, then apply.");
+    okmsg(tx("{name} loaded. Set the nose direction, then apply.", {name}));
   }
 
   async function loadFromUrl(u){
-    if (!u) return fail("Type a file name first.");
+    if (!u) return fail(tx("Type a file name first."));
     if (!safeModelPath(u))
-      return fail("Type the name of a file next to index.html, like myjet.glb. Full URLs are not shared with the flight.");
+      return fail(tx("Type the name of a file next to index.html, like myjet.glb. Full URLs are not shared with the flight."));
     Models.failed.delete(u);                    // 직접 누른 건 다시 시도한다
-    status.textContent = "Loading…"; status.style.color = "var(--ink2)";
+    status.textContent = tx("Loading…"); status.style.color = "var(--ink2)";
     try {
       await Models.fromUrl(u);
       beginTune(u, u.split("/").pop(), true);
@@ -4367,9 +4673,9 @@ function openHangar(){
   async function loadFromFile(f){
     if (!f) return;
     const ext = (f.name.split(".").pop() || "").toLowerCase();
-    if (!["glb","gltf","obj"].includes(ext)) return fail("Only .glb, .gltf and .obj can be read.");
-    if (f.size > 24 * 1024 * 1024) return fail("That file is over 24 MB.");
-    status.textContent = "Reading…"; status.style.color = "var(--ink2)";
+    if (!["glb","gltf","obj"].includes(ext)) return fail(tx("Only .glb, .gltf and .obj can be read."));
+    if (f.size > 24 * 1024 * 1024) return fail(tx("That file is over 24 MB."));
+    status.textContent = tx("Reading…"); status.style.color = "var(--ink2)";
     try {
       const buf = await f.arrayBuffer();
       const key = "local:" + f.name;
@@ -4388,7 +4694,7 @@ function openHangar(){
     if (e.dataTransfer && e.dataTransfer.files[0]) loadFromFile(e.dataTransfer.files[0]);
   });
 
-  openModal("Hangar", body, [mkBtn("Close","",closeModal)]);
+  openModal(tx("Hangar"), body, [mkBtn(tx("Close"),"",closeModal)]);
 }
 
 /* 내 기체를 씬에서 교체한다 */
@@ -4420,18 +4726,39 @@ async function restoreCustom(){
 <script>
 "use strict";
 /* ── 기동 ───────────────────────────────────────────────── */
+/* 언어 전환 — 버튼에는 '바꿀 언어'의 이름을 그 언어로 적는다 */
+function paintLangBtn(){
+  const b = $("#bLang"); if (!b) return;
+  const next = LANG === "en" ? "ko" : "en";
+  b.textContent = LANGS[next]; b.lang = next;
+  b.setAttribute("aria-label", next === "ko" ? "한국어로 보기" : "View in English");
+}
+function setLang(l){
+  if (!LANGS[l] || l === LANG) return;
+  LANG = l;
+  try { localStorage.setItem("ros.lang", l); } catch(e){}
+  document.documentElement.lang = l;
+  localizeData(); applyStaticText(); paintLangBtn();
+  closeModal();                                // 열린 창은 옛 언어로 그려져 있다
+  renderPilot(); renderFlight(); paintLink(); paintTips(); paintAsk();
+  if (Game.showBoard) renderBoard();
+  /* 작전실 아래 한 줄은 마지막 로그를 그대로 붙잡고 있다 — 새 언어로 한 줄 남겨 덮는다 */
+  sysLog(tx(l === "ko" ? "Language set to Korean." : "Language set to English."));
+}
 (function boot(){
+  localizeData(); applyStaticText(); paintLangBtn();
+  $("#bLang").addEventListener("click", () => setLang(LANG === "en" ? "ko" : "en"));
   renderPilot();
   renderFlight();
   paintLink();
 
-  sysLog("Operations room open. Callsign " + P.call + ".");
-  sysLog("Open a flight to get a four-digit squawk. Only pilots who know it can join.");
+  sysLog(tx("Operations room open. Callsign {call}.", {call:P.call}));
+  sysLog(tx("Open a flight to get a four-digit squawk. Only pilots who know it can join."));
 
   /* 링크에 스쿼크가 실려 있으면 바로 접속 시도 */
   const h = (location.hash || "").replace("#", "").trim();
   if (validSquawk(h)){
-    sysLog("Squawk " + h + " came in on the link. Connecting.");
+    sysLog(tx("Squawk {sq} came in on the link. Connecting.", {sq:h}));
     setTimeout(() => Net.join(h), 400);
   }
 
@@ -4447,8 +4774,8 @@ async function restoreCustom(){
     if (validSquawk(v) && !Net.up) Net.join(v);
   });
 
-  if (!window.THREE) sysLog("Warning: the 3D engine did not load. Check your connection.");
-  if (!window.Peer)  sysLog("Warning: the peer-to-peer module did not load. Solo training only.");
+  if (!window.THREE) sysLog(tx("Warning: the 3D engine did not load. Check your connection."));
+  if (!window.Peer)  sysLog(tx("Warning: the peer-to-peer module did not load. Solo training only."));
 })();
 </script>
 </body>
