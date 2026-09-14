@@ -941,8 +941,13 @@ const Net = {
       const p = new Peer(PID_PREFIX + sq, { debug:0, config:ICE });
       const finish = v => { if (done) return; done = true; res(v); };
       const timer = setTimeout(() => { try{p.destroy();}catch(e){} finish(false); }, 12000);
-      p.on("open", () => { clearTimeout(timer); this.peer = p; this._wireHost(p); finish(true); });
-      p.on("error", () => { clearTimeout(timer); try{p.destroy();}catch(e){} finish(false); });
+      /* 이 리스너는 '자리 잡기' 동안만 쓴다. open 뒤에도 남아 있으면 브로커가
+         잠깐 끊기거나(network) 게스트 협상이 하나 실패해도(webrtc) 호스트 Peer 를
+         destroy 해서 편대 전체가 해산된다. */
+      const onErr = () => { clearTimeout(timer); try{p.destroy();}catch(e){} finish(false); };
+      p.on("open", () => { clearTimeout(timer); p.off("error", onErr);
+                           this.peer = p; this._wireHost(p); finish(true); });
+      p.on("error", onErr);
     });
   },
 
@@ -1052,20 +1057,29 @@ const Net = {
 
     const p = new Peer({ debug:0, config:ICE });
     this.peer = p;
-    const fail = why => { this.status = "down"; this.mode = "off";
+    const fail = why => { this.mode = "off"; this.teardown(); this.status = "down";
       this.lastError = why; sysLog(why); paintLink(); renderFlight(); };
+    let ice = "";   // 브로커는 호스트를 찾았는데 P2P 직결이 안 되는 경우를 가려낸다
     const t = setTimeout(() => {
       if (this.status === "dialing")
-        fail("No answer. Check the squawk, and that the host still has the page open.");
-    }, 18000);
+        fail(ice ? "Found the host, but a direct link could not be made (ICE " + ice + "). " +
+                   "A strict NAT or firewall is in the way — a TURN relay is needed."
+                 : "No answer. Check the squawk, and that the host still has the page open.");
+    }, 25000);
 
     p.on("open", () => {
       const c = p.connect(PID_PREFIX + sq, { reliable:true, serialization:"json" });
       this.hostConn = c;
+      c.on("iceStateChanged", s => { ice = s; });
       c.on("open", () => { try{ c.send(Object.assign({t:"hello"}, Net.me())); }catch(e){} });
       c.on("data", m => this._guestRecv(m, t, fail));
       c.on("close", () => {
         clearTimeout(t);
+        if (this.mode === "guest" && this.status === "dialing"){
+          fail("Found the host, but a direct link could not be made. " +
+               "A strict NAT or firewall is in the way — a TURN relay is needed.");
+          return;
+        }
         if (this.mode === "guest"){
           sysLog("Lost the host. The flight has broken up.");
           if (Game.running) endSortie();
