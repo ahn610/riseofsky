@@ -29,9 +29,34 @@
 | `Same network only` | 엄격한 NAT 뒤에 있습니다. 같은 네트워크끼리만 될 수 있습니다. |
 | `Blocked` | 방화벽·프록시가 막고 있습니다. |
 
-`Same network only` 나 `Blocked` 가 뜨면 `index.html` 안의 `const ICE = { iceServers:[...] }`
-배열에 무료 TURN 중계 서버를 한 줄 추가하면 해결됩니다.
 학교·회사 네트워크에서는 실제로 막힐 수 있습니다.
+
+### 다른 네트워크의 친구와 연결이 안 될 때 — TURN 중계
+
+STUN 은 '내 공인 주소가 뭐냐'만 알려 줍니다. **양쪽 다 엄격한 NAT 뒤에 있으면**
+구멍이 뚫리지 않아 직결이 실패하고, 화면에 `TURN 중계 서버가 필요합니다` 라고 뜹니다.
+이때는 중계 서버가 있어야 합니다.
+
+`index.html` 옆에 **`turn.json`** 을 두면 됩니다. 링크로 들어온 편대원 전원이 같은 중계를
+쓰게 되고, 코드는 건드리지 않습니다. 파일이 없으면 지금까지와 똑같이 동작합니다.
+
+```json
+[
+  { "urls": "turn:내서버:3478", "username": "아이디", "credential": "비밀번호" }
+]
+```
+
+`turn.example.json` 을 복사해서 값만 채우면 됩니다.
+
+자격증명은 어디서 받나요 — 무료로 쓰던 공개 TURN(Open Relay 등)은 지금 전부 죽었습니다.
+[Metered](https://www.metered.ca/tools/openrelay/) · [Twilio](https://www.twilio.com/stun-turn) ·
+[Cloudflare Calls](https://developers.cloudflare.com/calls/turn/) 같은 곳에서 계정을 만들면
+무료 한도로 자격증명을 받을 수 있습니다. 직접 `coturn` 을 띄워도 됩니다.
+
+> 저장소가 공개라면 `turn.json` 도 공개됩니다. 자격증명이 새면 남이 내 중계 용량을 씁니다.
+> 한도가 있는 무료 계정을 쓰고, 이상하면 자격증명을 새로 발급하세요.
+> 그래서 `turn.json` 은 `.gitignore` 에 들어 있지 **않습니다** — 편대원 전원이 받아야 하니까요.
+> 공개가 싫으면 저장소를 비공개로 두고 Pages 만 공개하세요.
 
 ## 언어
 

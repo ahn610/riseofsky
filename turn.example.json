@@ -1,0 +1,12 @@
+[
+  {
+    "urls": "turn:YOUR.TURN.SERVER:3478",
+    "username": "YOUR_USERNAME",
+    "credential": "YOUR_PASSWORD"
+  },
+  {
+    "urls": "turns:YOUR.TURN.SERVER:5349",
+    "username": "YOUR_USERNAME",
+    "credential": "YOUR_PASSWORD"
+  }
+]
